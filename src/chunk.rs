@@ -42,6 +42,9 @@ pub fn chunks_plugin(app: &mut App){
     //.insert_resource(ChunkSplatMapResource::default())
     .insert_resource(ChunkMeshBuildTaskCounterResource::default())
 
+
+    .add_observer( handle_trigger_terrain_image_data_needs_reload )
+
       .add_systems(Update,
 
             (
@@ -869,6 +872,31 @@ pub fn build_chunk_height_data(
         }
     }
 } 
+
+
+
+#[derive(Event)] 
+pub struct TerrainImageDataNeedsReload;
+
+fn handle_trigger_terrain_image_data_needs_reload(
+
+    trigger: Trigger<  TerrainImageDataNeedsReload >,
+
+    mut chunk_data_query: Query<&mut ChunkData>
+
+){
+
+
+    let chunk_entity = trigger.entity(); 
+
+
+    let Some(mut chunk_data) = chunk_data_query.get_mut(chunk_entity ).ok() else {return };
+
+
+    chunk_data.height_map_image_data_load_status = TerrainImageDataLoadStatus::NeedsReload;
+
+}
+
 
 
 /*
