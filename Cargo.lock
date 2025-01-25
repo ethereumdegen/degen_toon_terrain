@@ -918,25 +918,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_mesh_terrain"
-version = "0.15.11"
-dependencies = [
- "anyhow",
- "avian3d",
- "bevy",
- "bincode",
- "futures-lite 1.13.0",
- "half",
- "image",
- "png",
- "rand",
- "ron",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
 name = "bevy_mikktspace"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1952,6 +1933,25 @@ name = "data-encoding"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e962a19be5cfc3f3bf6dd8f61eb50107f356ad6270fbb3ed41476571db78be5"
+
+[[package]]
+name = "degen_toon_terrain"
+version = "0.15.12"
+dependencies = [
+ "anyhow",
+ "avian3d",
+ "bevy",
+ "bincode",
+ "futures-lite 1.13.0",
+ "half",
+ "image",
+ "png",
+ "rand",
+ "ron",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "derive_more"

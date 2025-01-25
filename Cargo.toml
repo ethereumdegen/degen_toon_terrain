@@ -1,9 +1,9 @@
 [package]
-name = "bevy_mesh_terrain"
+name = "degen_toon_terrain"
 description = "A simple and ergonomic heightmap terrain plugin for Bevy game engine"
  
  
-version = "0.15.11"
+version = "0.15.12"
  
  
  
