@@ -14,8 +14,8 @@ use bevy::tasks::AsyncComputeTaskPool;
 use bevy::tasks::TaskPoolBuilder;
 
 
-use bevy_mesh_terrain::TerrainEditMode;
-use bevy_mesh_terrain::{
+use degen_toon_terrain::TerrainEditMode;
+use degen_toon_terrain::{
     terrain::{TerrainData, TerrainViewer},
     terrain_config::TerrainConfig,
     TerrainMeshPlugin,

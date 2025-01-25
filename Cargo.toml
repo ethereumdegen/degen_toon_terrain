@@ -1,5 +1,5 @@
 [package]
-name = "bevy_mesh_terrain"
+name = "degen_toon_terrain"
 description = "A simple and ergonomic heightmap terrain plugin for Bevy game engine"
  
  
@@ -11,7 +11,7 @@ edition = "2021"
 authors = [ "ethereumdegen" ]
 license = "MIT"
 readme = "readme.md"
-repository = "https://github.com/ethereumdegen/bevy_mesh_terrain"
+repository = "https://github.com/ethereumdegen/degen_toon_terrain"
 exclude = [ "/assets/", "/examples/" ]
 keywords = [ "terrain" , "bevy" ]
 

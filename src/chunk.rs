@@ -411,7 +411,7 @@ pub fn initialize_chunk_data(
 
             
 
-        let hsv_noise_texture = asset_server.load("embedded://bevy_mesh_terrain/shaders/hsv_noise.png");
+        let hsv_noise_texture = asset_server.load("embedded://degen_toon_terrain/shaders/hsv_noise.png");
 
             //to start off, render at low LOD 
         let chunk_base_lod = LOWEST_LOW_LEVEL; // hmm might cause issues .. base this off distance properly ? 
