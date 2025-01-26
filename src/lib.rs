@@ -1,4 +1,5 @@
  
+
 use bevy::asset::embedded_asset;
 use bevy::time::common_conditions::on_timer;
 use bevy::{asset::load_internal_asset, prelude::*};
@@ -13,9 +14,10 @@ use std::time::Duration;
 //use chunk::{activate_terrain_chunks, destroy_terrain_chunks, despawn_terrain_chunks, build_active_terrain_chunks, finish_chunk_build_tasks, ChunkEvent};
 //use collision::spawn_chunk_collision_data;
 
-use crate::chunk::TerrainMaterialExtension;
+use crate::terrain_material::TerrainMaterialExtension;
 use crate::terrain_material::TERRAIN_SHADER_HANDLE;
-use terrain_material::TerrainMaterial;
+use crate::terrain_material::TOON_LIGHTING_SHADER_HANDLE;
+use terrain_material::{update_toon_shader, TerrainMaterial, ToonShaderSun};
 
 use edit::{
     apply_command_events, apply_tool_edits, EditTerrainEvent, TerrainBrushEvent,
@@ -59,6 +61,14 @@ impl Plugin for TerrainMeshPlugin {
         let task_update_rate = Duration::from_millis(250);
 
 
+          load_internal_asset!(
+            app,
+            TOON_LIGHTING_SHADER_HANDLE,
+            "shaders/toon_lighting.wgsl",
+            Shader::from_wgsl
+        );
+
+
 
         // load terrain shader into cache
         load_internal_asset!(
@@ -96,6 +106,12 @@ impl Plugin for TerrainMeshPlugin {
             Update,
             initialize_terrain.run_if(on_timer(task_update_rate)),
         );
+
+        app.add_systems(
+            Update,
+            update_toon_shader.run_if( 
+              any_with_component::<ToonShaderSun>  .and( resource_exists::<Assets<TerrainMaterialExtension>> ) ) ) // need to load resources THEN the  sun 
+        ;
          
 
         app.add_systems(Update, (

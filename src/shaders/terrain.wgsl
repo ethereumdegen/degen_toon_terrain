@@ -2,7 +2,8 @@
 //see bindings in terrain_material.rs 
  
  //https://github.com/nicopap/bevy_mod_paramap/blob/main/src/parallax_map.wgsl
-
+ 
+ #import degen_toon_terrain::toon_lighting::{calculate_toon_lighting,ToonShaderMaterial}
 
 
  #import bevy_pbr::{
@@ -50,6 +51,11 @@ struct ToolPreviewUniforms {
     tool_color: vec3<f32>    
 };
 
+
+
+
+
+
 //https://github.com/DGriffin91/bevy_mod_standard_material/blob/main/assets/shaders/pbr.wgsl
 
 
@@ -73,6 +79,17 @@ var metallic_roughness_sampler: sampler;
 var occlusion_texture: texture_2d<f32>;
 @group(1) @binding(8)
 var occlusion_sampler: sampler;
+
+
+
+
+
+
+@group(2) @binding(18)
+var<uniform> toon_material: ToonShaderMaterial;
+
+
+
 
 
 @group(2) @binding(20)
@@ -428,6 +445,15 @@ fn fragment(
 
 // https://github.com/bevyengine/bevy/blob/main/assets/shaders/array_texture.wgsl 
     
+    
+    let tangent = normalize( blended_normal_vec3 );
+
+    //we mix the normal with our sample so shadows are affected by the normal map ! 
+    let normal_mixed = mix( normalize( mesh.world_normal ) , normalize( tangent ) , 0.7 );
+
+
+
+    /*
     let tangent = normalize( blended_normal_vec3 );
 
     //we mix the normal with our sample so shadows are affected by the normal map ! 
@@ -441,12 +467,14 @@ fn fragment(
     pbr_input.V =  calculate_view(mesh.world_position, pbr_input.is_orthographic);
 
 
-    var pbr_out: FragmentOutput;
- 
+   
+
+
+
+   
     
     // apply lighting
-    pbr_out.color = apply_pbr_lighting(pbr_input);
-
+    
     // we can optionally modify the lit color before post-processing is applied
     // out.color = out.color;
     // apply in-shader post processing (fog, alpha-premultiply, and also tonemapping, debanding if the camera is non-hdr)
@@ -454,6 +482,33 @@ fn fragment(
     pbr_out.color = main_pass_post_lighting_processing(pbr_input, pbr_out.color);
 
     pbr_out.color=  tone_mapping(pbr_out.color, view.color_grading);
+
+
+
+   */
+
+
+    var pbr_out: FragmentOutput;
+
+   // pbr_out.color = apply_pbr_lighting(pbr_input);
+
+
+    // View direction
+    let camera_pos = view.world_position; 
+    let view_dir = normalize(camera_pos - mesh.world_position.xyz);
+
+
+    pbr_out.color = toon_material.color *  blended_color ;
+
+    let toon_lighting = calculate_toon_lighting( normal_mixed , view_dir, toon_material.sun_dir, toon_material.sun_color );
+
+
+     pbr_out.color  *= (toon_lighting + toon_material.ambient_color);  
+ 
+
+
+
+
 
     // -----
 

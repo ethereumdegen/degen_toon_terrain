@@ -7,7 +7,7 @@ use bevy::render::render_resource::{
  
 use bevy::utils::HashMap;
 
-use crate::chunk::{Chunk, ChunkCoordinates, ChunkCoords, ChunkData, TerrainMaterialExtension};
+use crate::chunk::{Chunk, ChunkCoordinates, ChunkCoords, ChunkData,  };
 use crate::heightmap::{HeightMap, HeightMapU16};
 use crate::terrain_material::{ChunkMaterialUniforms, TerrainMaterial};
 

@@ -1,4 +1,5 @@
 
+use crate::terrain_material::TerrainMaterialExtension;
 use crate::TerrainEditMode;
 use crate::hypersplat::ChunkSplatDataRaw;
 use std::time::Duration;
@@ -135,9 +136,6 @@ pub struct ChunkMeshBuildTaskCounterResource {
     pub active_build_tasks:usize  
 }
 
-
-
-pub type TerrainMaterialExtension = ExtendedMaterial<StandardMaterial, TerrainMaterial>;
 
 
 #[derive(Component)]
