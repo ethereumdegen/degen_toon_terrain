@@ -11,7 +11,7 @@ TerrainConfig(
     
     use_greedy_mesh: false,   
     
-    texture_uv_expansion_factor:16,
+    texture_uv_expansion_factor:8,
     texture_image_sections: 32,
     // Assuming the addition of fields for paths to the height and splat folders
     
