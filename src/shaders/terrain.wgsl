@@ -540,7 +540,7 @@ fn fragment(
      
     pbr_input.world_position = mesh.world_position ;
     pbr_input.world_normal =  prepare_world_normal(
-        mesh.world_normal,
+        mesh.world_normal ,
         double_sided,
         is_front,
     );
@@ -551,7 +551,7 @@ fn fragment(
     let tangent = normalize( blended_normal_vec3 );
 
     //we mix the normal with our sample so shadows are affected by the normal map ! 
-    let normal_mixed = mix( normalize( mesh.world_normal ) , normalize( tangent ) , 0.7 );
+    let normal_mixed = mix( normalize( mesh.world_normal   +  (   hsv_noise_sample.rgb * 0.2)) , normalize( tangent ) , 0.5 );
 
 
 
@@ -592,6 +592,8 @@ fn fragment(
 
     var pbr_out: FragmentOutput;
 
+   // pbr_input.N  = vec3<f32>(0.0,1.0,0.0);
+
     pbr_out.color = apply_pbr_lighting(pbr_input);  //add shadows 
      pbr_out.color = main_pass_post_lighting_processing(pbr_input, pbr_out.color); //add fog 
       pbr_out.color =  tone_mapping(pbr_out.color, view.color_grading);  // add tone mapping 
@@ -605,7 +607,7 @@ fn fragment(
 
 
   
-
+        //need to rewrite apply_pbr_lighting to make it have toon bands !  basically need this to account for the actual directional light / shadows 
     let toon_lighting = calculate_toon_lighting( normal_mixed , view_dir, toon_material.sun_dir, toon_material.sun_color );
 
 
