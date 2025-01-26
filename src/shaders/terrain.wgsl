@@ -490,7 +490,11 @@ fn fragment(
 
     var pbr_out: FragmentOutput;
 
-   // pbr_out.color = apply_pbr_lighting(pbr_input);
+    pbr_out.color = apply_pbr_lighting(pbr_input);  //add shadows 
+     pbr_out.color = main_pass_post_lighting_processing(pbr_input, pbr_out.color); //add fog 
+      pbr_out.color =  tone_mapping(pbr_out.color, view.color_grading);  // add tone mapping 
+
+      pbr_out.color *= toon_material.color   ; 
 
 
     // View direction
@@ -498,7 +502,7 @@ fn fragment(
     let view_dir = normalize(camera_pos - mesh.world_position.xyz);
 
 
-    pbr_out.color = toon_material.color *  blended_color ;
+  
 
     let toon_lighting = calculate_toon_lighting( normal_mixed , view_dir, toon_material.sun_dir, toon_material.sun_color );
 
