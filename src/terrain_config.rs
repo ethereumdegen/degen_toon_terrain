@@ -33,9 +33,11 @@ pub struct TerrainConfig {
     pub texture_uv_expansion_factor: f32, 
 
     pub texture_image_sections: u32,
-    pub diffuse_folder_path: PathBuf,
-    pub normal_folder_path: PathBuf,
-    pub blend_height_folder_path: PathBuf,
+    pub diffuse_texture_path: PathBuf,
+    pub secondary_diffuse_texture_path: PathBuf, 
+
+    pub normal_texture_path: PathBuf,
+    pub blend_height_texture_path: PathBuf,
 
 
     pub height_folder_path: PathBuf,
@@ -62,9 +64,11 @@ impl Default for TerrainConfig {
             use_greedy_mesh: false,
             texture_image_sections: 8,
 
-            diffuse_folder_path: "diffuse/".into(),
-            normal_folder_path: "normal/".into(),
-            blend_height_folder_path: "blend_height/".into(),
+            diffuse_texture_path: "diffuse/".into(),
+            secondary_diffuse_texture_path: "diffuse/".into(),
+
+            normal_texture_path: "normal/".into(),
+            blend_height_texture_path: "blend_height/".into(),
 
 
             height_folder_path: "height/".into(),

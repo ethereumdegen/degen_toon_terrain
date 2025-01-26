@@ -1253,7 +1253,8 @@ pub fn finish_chunk_build_tasks(
             let (terrain_data, terrain_config) = terrain_query.get(terrain_entity_id).unwrap();
             let color_texture_expansion_factor =  terrain_config.texture_uv_expansion_factor;
 
-            let array_texture = terrain_data.get_array_texture_image().clone();
+            let diffuse_texture = terrain_data.get_diffuse_texture_image().clone();
+            let secondary_diffuse_texture = terrain_data.get_secondary_diffuse_texture_image().clone(); 
             let normal_texture = terrain_data.get_normal_texture_image().clone();
             let blend_height_texture = terrain_data.get_blend_height_texture_image().clone();
 
@@ -1288,7 +1289,8 @@ pub fn finish_chunk_build_tasks(
                             chunk_uv,
                         },
                         tool_preview_uniforms: ToolPreviewUniforms::default(),
-                        diffuse_texture: array_texture,
+                        diffuse_texture: diffuse_texture,
+                        secondary_diffuse_texture: secondary_diffuse_texture, 
                         normal_texture: normal_texture,
                         blend_height_texture: blend_height_texture, 
 

@@ -99,7 +99,7 @@ var<uniform> chunk_uniforms: ChunkMaterialUniforms;
 var<uniform> tool_preview_uniforms: ToolPreviewUniforms;
 
 @group(2) @binding(22)
-var base_color_texture: texture_2d_array<f32>;
+var base_color_texture: texture_2d_array<f32>;   // why is this bound twice..
 @group(2) @binding(23)
 var base_color_sampler: sampler;
 
@@ -161,6 +161,55 @@ var hsv_noise_sampler: sampler;
 
 
 const BLEND_HEIGHT_OVERRIDE_THRESHOLD:f32 = 0.8;
+
+
+
+
+// ok now just be sure the wrap the secondary texture around SIDEWAYS so it doesnt get stretched weird 
+
+fn triplanar_mapping_lerp_output(
+     world_normal: vec3<f32>,
+ 
+   
+) -> vec3<f32> {
+    // Absolute value of the world normal to determine axis dominance
+    let abs_normal = abs(world_normal);
+
+    // Calculate blending weights for each axis (X, Y, Z)
+    let sum = abs_normal.x + abs_normal.y + abs_normal.z;
+    let weights = abs_normal / sum;
+
+    // Optionally apply a bias or tweak to control blending
+//    let x_weight = weights.x; // Contribution of X-axis (sides)
+  //  let y_weight = weights.y; // Contribution of Y-axis (sides)
+  //  let z_weight = weights.z; // Contribution of Z-axis (top)
+
+    // Combine X and Y weights to control side texture blending
+  //  let side_weight = (x_weight + z_weight)  ;
+
+
+  //some clamping .. dont want so much blending ..
+  //if the vector is quite upward facing, just render it as completely upward facing .  
+   if weights.y > 0.33 {  
+      return vec3<f32>(0.0,1.0,0.0) ;
+   } 
+
+    if weights.x > 0.33 {  
+      return vec3<f32>(1.0,0.0,0.0) ;
+    } 
+
+    if weights.z > 0.33 {  
+      return vec3<f32>(0.0,0.0,1.0) ;
+   } 
+ 
+
+
+  // the y weight is used for the normal diffuse tex !! 
+    return  weights;
+}
+ 
+
+
 
 
 
@@ -296,6 +345,8 @@ fn fragment(
 
 
   
+      
+
 
       // Initialize texture_layers_used and blended color
     
@@ -341,7 +392,7 @@ fn fragment(
         
        // var splat_strength = splat_strength_array[i];
   
-        let blend_height_strength_f = textureSample(blend_height_texture, blend_height_sampler, tiled_uv, terrain_layer_A_index). r ;
+           let blend_height_strength_f = textureSample(blend_height_texture, blend_height_sampler, tiled_uv, terrain_layer_A_index). r ;
  
 
 
@@ -353,23 +404,62 @@ fn fragment(
             let base_color_from_normal = textureSample(normal_texture, normal_sampler, tiled_uv, terrain_layer_A_index);  
 
             let base_color_from_diffuse_distorted = textureSample(base_color_texture, base_color_sampler, tiled_uv, terrain_layer_A_index_distorted);
-
-
-
-
+ 
             
             let base_distortion_lerp =   hsv_noise_sample.b    ; // make this lerp be noisy  
             let base_mixed_color_from_diffuse = mix(base_color_from_diffuse_distorted, base_color_from_diffuse , base_distortion_lerp ) ;  //final base color 
 
 
-          
+
+                // need these to be based on like .... something else 
+           // let secondary_planar_uv = vec2<f32> (tiled_uv.y, tiled_uv.x);
+            let secondary_planar_uv_A = vec2<f32>(mesh.world_position.z, mesh.world_position.y) * 0.125;  //use this w x weight 
+            let secondary_planar_uv_B = vec2<f32>(mesh.world_position.x, mesh.world_position.y) * 0.125; // use this w z weight 
+
+                /// --- planar stuff 
+             let secondary_plane_color_from_diffuse_A = textureSample(secondary_planar_texture, secondary_planar_sampler, secondary_planar_uv_A  , terrain_layer_A_index);
+              let secondary_plane_color_from_diffuse_B = textureSample(secondary_planar_texture, secondary_planar_sampler, secondary_planar_uv_B  , terrain_layer_A_index);
+            // let secondary_plane_color_from_diffuse_distorted = textureSample(secondary_planar_texture, secondary_planar_sampler,  secondary_planar_uv, terrain_layer_A_index_distorted);
+
+
+             
+             let planar_lerp_weights = triplanar_mapping_lerp_output(  
+                    mesh.world_normal.xyz  ,    //add some distortion 
+              ) ;
+
+            let planar_lerp_weights_distorted = triplanar_mapping_lerp_output(  
+                    mesh.world_normal.xyz + hsv_noise_sample.rgb,    //add some distortion 
+              ) ;
+
+ 
+
+
+            let triplanar_color = base_mixed_color_from_diffuse * planar_lerp_weights.y
+               + secondary_plane_color_from_diffuse_A * planar_lerp_weights.x
+               + secondary_plane_color_from_diffuse_B * planar_lerp_weights.z
+
+            ;
+             let triplanar_color_distorted = base_mixed_color_from_diffuse * planar_lerp_weights_distorted.y
+               + secondary_plane_color_from_diffuse_A * planar_lerp_weights_distorted.x
+               + secondary_plane_color_from_diffuse_B * planar_lerp_weights_distorted.z
+            ;
+
+            blended_color = mix( triplanar_color ,  triplanar_color_distorted ,   0.25   );
+
+
+
+            //  blended_color = mix( blended_color , secondary_plane_color_from_diffuse_A ,   planar_lerp_weights.x );
+             //  blended_color = mix( blended_color , secondary_plane_color_from_diffuse_B ,   planar_lerp_weights.z );
+ 
+          //   blended_color = vec4<f32>( planar_lerp ,0.0,0.0,1.0   );
            // var splat_strength_float =   splat_strength ;
             //from 0.0 to 1.0 
 
 
 
 
-             blended_color = base_mixed_color_from_diffuse;
+           //  blended_color = base_mixed_color_from_diffuse;
+
                 blended_normal = base_color_from_normal;
                 highest_drawn_pixel_height = blend_height_strength_f;
 
@@ -432,8 +522,8 @@ fn fragment(
    
   // generate a PbrInput struct from the StandardMaterial bindings
   //remove this fn to make things faster as it duplicates work in gpu .. 
-    var pbr_input = pbr_input_from_standard_material(mesh, is_front);
-      
+   var pbr_input = pbr_input_from_standard_material(mesh, is_front);
+     
     
  
     //hack the material (StandardMaterialUniform)  so the color is from the terrain splat 
@@ -565,3 +655,5 @@ fn fragment(
   // https://github.com/nicopap/bevy_mod_paramap/blob/main/src/parallax_map.wgsl
 
  //later ? 
+
+ 

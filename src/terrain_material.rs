@@ -89,9 +89,9 @@ pub struct TerrainMaterial {
 
     
     // -----  could b nice to have normal and blend height for this... hmm .. or whatver ? 
-    #[texture(28, dimension = "2d" )]
+    #[texture(28, dimension = "2d_array" )]
     #[sampler(29 )]
-    pub secondary_planar_texture: Option<Handle<Image>>,   //similar to the diffuse texture but different ! 
+    pub secondary_diffuse_texture: Option<Handle<Image>>,   //similar to the diffuse texture but different ! 
 
      // -----
 

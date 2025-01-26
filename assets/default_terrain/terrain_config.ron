@@ -19,9 +19,10 @@ TerrainConfig(
     
      height_folder_path: "default_terrain/height", 
      splat_folder_path: "default_terrain/splat", 
-     diffuse_folder_path: "default_terrain/diffuse/array_texture_lg.tga", 
-     normal_folder_path: "default_terrain/diffuse/normal_texture_lg.tga", 
-     blend_height_folder_path: "default_terrain/diffuse/blend_height_lg.tga", 
+     diffuse_texture_path: "default_terrain/diffuse/diffuse_array_texture_lg.tga", 
+     secondary_diffuse_texture_path: "default_terrain/diffuse/diffuse_secondary_array_texture_lg.tga", 
+     normal_texture_path: "default_terrain/diffuse/normal_texture_lg.tga", 
+     blend_height_texture_path: "default_terrain/diffuse/blend_height_lg.tga", 
      collider_data_folder_path: "default_terrain/collision",  
      
 )
