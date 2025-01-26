@@ -35,7 +35,7 @@ pub mod terrain_loading_state;
 pub mod terrain_material;
 pub mod tool_preview;
 
-pub mod hypersplat;
+pub mod splat;
 
 #[derive(Default, Hash,Eq,PartialEq,States,Debug,Clone )] 
 pub enum TerrainEditMode {
@@ -89,7 +89,7 @@ impl Plugin for TerrainMeshPlugin {
         app.add_plugins(MaterialPlugin::<TerrainMaterialExtension>::default());
         app.add_plugins(chunk::chunks_plugin);
 
-        app.add_plugins(hypersplat::hypersplat_plugin);
+        app.add_plugins(splat::splat_plugin);
 
 
         app.init_state::<terrain_loading_state::TerrainLoadingState>();

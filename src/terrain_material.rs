@@ -87,17 +87,24 @@ pub struct TerrainMaterial {
     #[sampler(27  )]
     pub blend_height_texture: Option<Handle<Image>>,
 
+    
+    // -----  could b nice to have normal and blend height for this... hmm .. or whatver ? 
+    #[texture(28, dimension = "2d" )]
+    #[sampler(29 )]
+    pub secondary_planar_texture: Option<Handle<Image>>,   //similar to the diffuse texture but different ! 
+
+     // -----
 
 
 
     #[texture(30, dimension = "2d",sample_type = "u_int")] //rgba8uint
     #[sampler(31 , sampler_type = "non_filtering")]
-    pub splat_index_map_texture: Option<Handle<Image>>,
+    pub splat_map_texture: Option<Handle<Image>>,
 
     
-    #[texture(32, dimension = "2d" )]
-    #[sampler(33 )]
-    pub splat_strength_map_texture: Option<Handle<Image>>,
+   // #[texture(32, dimension = "2d" )]
+   // #[sampler(33 )]
+   // pub splat_strength_map_texture: Option<Handle<Image>>,
 
  
 

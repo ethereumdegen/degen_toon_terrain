@@ -1,9 +1,8 @@
-use crate::hypersplat::SplatMapDataUpdated;
-use crate::hypersplat::save_chunk_splat_index_map_to_disk;
-use crate::hypersplat::save_chunk_splat_strength_map_to_disk;
+use crate::splat::SplatMapDataUpdated;
+use crate::splat::save_chunk_splat_map_to_disk; 
  
 use crate::heightmap::HeightMap;
-use crate::hypersplat::ChunkSplatDataRaw;
+use crate::splat::ChunkSplatDataRaw;
 use std::ops::{Add, Div, Neg};
 use std::path::PathBuf;
 
@@ -95,7 +94,7 @@ pub struct EditTerrainEvent {
 #[derive(Event, Debug, Clone)]
 pub enum TerrainBrushEvent {
     EyeDropTerrainHeight { height: u16 },
-    EyeDropSplatMap { texture_indices: [u8;4] , texture_strengths: [u8;4]  },
+    EyeDropSplatMap { texture_indices: [u8;4]  },
 }
 
 #[derive(Event, Debug, Clone)]
@@ -152,25 +151,19 @@ pub fn apply_command_events(
                     //need to rewrite this !! 
                      if *save_splat {
  
-                        let (chunk_splat_index_map_image,chunk_splat_strength_map_image) 
-                                = chunk_splat_data.get_images();
+                        let  chunk_splat_map_image 
+                                = chunk_splat_data.get_image();
                          
                            
-                            save_chunk_splat_index_map_to_disk(
-                                &chunk_splat_index_map_image,
+                            save_chunk_splat_map_to_disk(
+                                &chunk_splat_map_image,
                                 asset_folder_path
                                     .join(&terrain_config.splat_folder_path)
-                                    .join("index_maps")
+                                   // .join("index_maps")
                                     .join(&file_name),
                             );
 
-                              save_chunk_splat_strength_map_to_disk(
-                                    &chunk_splat_strength_map_image,
-                                    asset_folder_path
-                                        .join(&terrain_config.splat_folder_path)
-                                        .join("strength_maps")
-                                        .join(&file_name),
-                                );
+                               
                              
                         
                     } 
@@ -567,8 +560,8 @@ pub fn apply_tool_edits(
                                 //if let Some(img) = images.get_mut(splat_image_handle) {
                                     // Calculate the pixel position and radius in pixels
                                     let splat_dimensions = UVec2::new(
-                                        chunk_splat_data_raw.splat_index_map_texture.width() , 
-                                        chunk_splat_data_raw.splat_index_map_texture.height() 
+                                        chunk_splat_data_raw.splat_map_texture.width() , 
+                                        chunk_splat_data_raw.splat_map_texture.height() 
                                         ) ;
 
                                     let tool_coords: &Vec2 = &ev.coordinates;
@@ -680,8 +673,8 @@ pub fn apply_tool_edits(
 
 
 
-
-                                                            let original_strength = chunk_splat_data_raw.get_pixel_strength_map_data(
+                                                            /*
+                                                            let original_strength = chunk_splat_data_raw.get_pixel_index_map_data(
                                                                 x,
                                                                 y,
                                                                 texture_layer,
@@ -699,7 +692,7 @@ pub fn apply_tool_edits(
 
                                                             );         
 
-
+                                                         */
 
                                                             
                                                             chunk_splat_data_raw.set_pixel_index_map_data(
@@ -710,13 +703,13 @@ pub fn apply_tool_edits(
                                                                // strength_with_hardness as u8 
                                                             );
 
-                                                             chunk_splat_data_raw.set_pixel_strength_map_data(
+                                                           /*  chunk_splat_data_raw.set_pixel_index_map_data(
                                                                 x,
                                                                 y,
                                                                 texture_layer,
                                                              //  texture_type_index,
                                                                 strength_with_hardness as u8 
-                                                            );
+                                                            );*/
 
 
  
@@ -814,7 +807,7 @@ pub fn apply_tool_edits(
 
 
                                                     let mut texture_indices : [u8 ; 4 ] = [0u8; 4]; 
-                                                    let mut texture_strengths : [u8 ; 4 ]  = [0u8; 4]; 
+                                                   // let mut texture_strengths : [u8 ; 4 ]  = [0u8; 4]; 
 
                                                     for tex_layer in 0..4 {
 
@@ -825,15 +818,10 @@ pub fn apply_tool_edits(
                                                            
                                                             ); 
 
-                                                         let original_strength = chunk_splat_data_raw.get_pixel_strength_map_data(
-                                                                    x,
-                                                                    y,
-                                                                    tex_layer,
-                                                               
-                                                                );   
+                                                      
 
                                                         texture_indices[tex_layer as usize] = original_index;
-                                                        texture_strengths[tex_layer as usize] = original_strength;
+                                                        //texture_strengths[tex_layer as usize] = original_strength;
 
                                                     }
 
@@ -841,7 +829,7 @@ pub fn apply_tool_edits(
 
                                                         evt_writer.send(
                                                             TerrainBrushEvent::EyeDropSplatMap {
-                                                                 texture_indices,texture_strengths
+                                                                 texture_indices
                                                             },
                                                         );
                                                  
@@ -867,8 +855,8 @@ pub fn apply_tool_edits(
                                 //if let Some(img) = images.get_mut(splat_image_handle) {
                                     // Calculate the pixel position and radius in pixels
                                     let splat_dimensions = UVec2::new(
-                                        chunk_splat_data_raw.splat_index_map_texture.width() , 
-                                        chunk_splat_data_raw.splat_index_map_texture.height() 
+                                        chunk_splat_data_raw.splat_map_texture.width() , 
+                                        chunk_splat_data_raw.splat_map_texture.height() 
                                         ) ;
 
                                     let tool_coords: &Vec2 = &ev.coordinates;
@@ -969,14 +957,14 @@ pub fn apply_tool_edits(
 
 
 
-                                                                 let original_strength = chunk_splat_data_raw.get_pixel_strength_map_data(
+                                                                /* let original_strength = chunk_splat_data_raw.get_pixel_strength_map_data(
                                                                         x,
                                                                         y,
                                                                         texture_layer,
                                                                    
-                                                                    ); 
+                                                                    ); */
 
-                                                                   let strength_with_hardness = apply_hardness_multiplier(
+                                                                  /* let strength_with_hardness = apply_hardness_multiplier(
 
 
 
@@ -985,7 +973,7 @@ pub fn apply_tool_edits(
 
                                                                     hardness_multiplier
 
-                                                                    );         
+                                                                    );        */ 
 
 
 
@@ -998,14 +986,7 @@ pub fn apply_tool_edits(
                                                                        // strength_with_hardness as u8 
                                                                     );
 
-                                                                     chunk_splat_data_raw.set_pixel_strength_map_data(
-                                                                        x,
-                                                                        y,
-                                                                        texture_layer,
-                                                                     //  texture_type_index,
-                                                                        strength_with_hardness as u8 
-                                                                    );
-
+                                                                    
 
 
 
@@ -1119,15 +1100,10 @@ pub fn apply_tool_edits(
                                                            
                                                             ); 
 
-                                                         let original_strength = chunk_splat_data_raw.get_pixel_strength_map_data(
-                                                                    x,
-                                                                    y,
-                                                                    tex_layer,
-                                                               
-                                                                );   
+                                                      
 
                                                         texture_indices[tex_layer as usize] = original_index;
-                                                        texture_strengths[tex_layer as usize] = original_strength;
+                                                         
 
                                                     }
 
@@ -1135,7 +1111,7 @@ pub fn apply_tool_edits(
 
                                                         evt_writer.send(
                                                             TerrainBrushEvent::EyeDropSplatMap {
-                                                                 texture_indices,texture_strengths
+                                                                 texture_indices, 
                                                             },
                                                         );
                                                  

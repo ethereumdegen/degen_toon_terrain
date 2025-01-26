@@ -115,6 +115,12 @@ var blend_height_sampler: sampler;
 
 
 
+@group(2) @binding(28)
+var secondary_planar_texture: texture_2d_array<f32>;  //for triplanar junk 
+@group(2) @binding(29)
+var secondary_planar_sampler: sampler;
+
+
 
 
 // see hypersplat.rs 
@@ -123,11 +129,12 @@ var splat_index_map_texture: texture_2d<u32>;
  @group(2) @binding(31)
 var splat_index_map_sampler: sampler;
 
+/*
 @group(2) @binding(32)
 var splat_strength_map_texture: texture_2d<f32>; 
  @group(2) @binding(33)
 var splat_strength_map_sampler: sampler;
-
+*/
 
 
 // we use a separate tex for this for NOW to make collision mesh building far easier (only need height map and not splat)
@@ -265,7 +272,7 @@ fn fragment(
 
     
 
-     let splat_strength_values_at_pixel :vec4<f32> = textureSample(splat_strength_map_texture, splat_strength_map_sampler, splat_uv ).rgba;
+ //    let splat_strength_values_at_pixel :vec4<f32> = textureSample(splat_strength_map_texture, splat_strength_map_sampler, splat_uv ).rgba;
 
 
      // --------- 
@@ -281,7 +288,7 @@ fn fragment(
  
 
     // Initialize an array to store the splat strength values and the index values
-    var splat_strength_array: array<f32, 4> = array<f32, 4>(splat_strength_values_at_pixel.x  , splat_strength_values_at_pixel.y, splat_strength_values_at_pixel.z , splat_strength_values_at_pixel.w );
+  //  var splat_strength_array: array<f32, 4> = array<f32, 4>(splat_strength_values_at_pixel.x  , splat_strength_values_at_pixel.y, splat_strength_values_at_pixel.z , splat_strength_values_at_pixel.w );
 
     var splat_index_array: array<u32, 4> = array<u32, 4>(splat_index_values_at_pixel.x, splat_index_values_at_pixel.y, splat_index_values_at_pixel.z, splat_index_values_at_pixel.w);
 
@@ -309,69 +316,74 @@ fn fragment(
       let hsv_noise_amount = hsv_noise_sample.r;
 
 
-    // Loop through each layer (max 4 layers)
-    for (var i: u32 = 0u; i < 4u; i = i + 1u) {
+      let terrain_layer_A_index =  i32(splat_index_array[0]);
+      let terrain_layer_A_index_distorted = i32(splat_index_array_distorted[0]); 
 
-        let terrain_layer_index =  i32(splat_index_array[i]);
-        let terrain_layer_index_distorted = i32(splat_index_array_distorted[i]);  //if this is different than the original, we can blend !!! 
+
+      let terrain_layer_B_index =  i32(splat_index_array[1]);
+      let terrain_layer_B_index_distorted = i32(splat_index_array_distorted[1]); 
+
+
+      let terrain_layer_B_strength = splat_index_array[2] ;
+       let terrain_layer_B_strength_distorted = splat_index_array_distorted[2] ;
+
+
+    // Loop through each layer (max 4 layers)
+  //  for (var i: u32 = 0u; i < 2u; i = i + 1u) {
+
+      //  let terrain_layer_index =  i32(splat_index_array[i]);
+      //  let terrain_layer_index_distorted = i32(splat_index_array_distorted[i]);  //if this is different than the original, we can blend !!! 
 
 
         //if there is only a base layer, it is always full strength. This allows for better blends so the base layer can be low strength (1). 
 
 
         
-        var splat_strength = splat_strength_array[i];
+       // var splat_strength = splat_strength_array[i];
+  
+        let blend_height_strength_f = textureSample(blend_height_texture, blend_height_sampler, tiled_uv, terrain_layer_A_index). r ;
+ 
 
 
-
-
-        let blend_height_strength_f = textureSample(blend_height_texture, blend_height_sampler, tiled_uv, terrain_layer_index). r ;
-
-         //helps us blend per-pixel based on a blend height map 
-     //  let blend_height_strength :u32 = textureLoad(blend_height_texture,   vec2<i32>(  blend_height_sample_coord  ) , 0 , terrain_layer_index ).r; 
-
-      
-
-
-
-        
-        if (splat_strength < 0.01 ) {   
-         continue ;
-         }
-        
-
-
-
+ 
 
             // Look up the terrain layer index and sample the corresponding texture
           
-            let color_from_diffuse = textureSample(base_color_texture, base_color_sampler, tiled_uv, terrain_layer_index);
-            let color_from_normal = textureSample(normal_texture, normal_sampler, tiled_uv, terrain_layer_index);
-            
-             
-            
+            let base_color_from_diffuse = textureSample(base_color_texture, base_color_sampler, tiled_uv, terrain_layer_A_index);
+            let base_color_from_normal = textureSample(normal_texture, normal_sampler, tiled_uv, terrain_layer_A_index);  
 
-            let color_from_diffuse_distorted = textureSample(base_color_texture, base_color_sampler, tiled_uv, terrain_layer_index_distorted);
+            let base_color_from_diffuse_distorted = textureSample(base_color_texture, base_color_sampler, tiled_uv, terrain_layer_A_index_distorted);
+
+
+
 
             
-            let distortion_lerp =   hsv_noise_sample.b    ; // make this lerp be noisy  
-            let mixed_color_from_diffuse = mix(color_from_diffuse_distorted, color_from_diffuse , distortion_lerp ) ;
+            let base_distortion_lerp =   hsv_noise_sample.b    ; // make this lerp be noisy  
+            let base_mixed_color_from_diffuse = mix(base_color_from_diffuse_distorted, base_color_from_diffuse , base_distortion_lerp ) ;  //final base color 
 
 
           
-            var splat_strength_float =   splat_strength ;
+           // var splat_strength_float =   splat_strength ;
             //from 0.0 to 1.0 
 
 
+
+
+             blended_color = base_mixed_color_from_diffuse;
+                blended_normal = base_color_from_normal;
+                highest_drawn_pixel_height = blend_height_strength_f;
+
        
  
-
+/*
             if i == 0u {
                 blended_color = mixed_color_from_diffuse;
                 blended_normal = color_from_normal;
                 highest_drawn_pixel_height = blend_height_strength_f;
             }else {
 
+
+                 // this junk happens to the secondaryh material !! 
 
 
                 //renders above 
@@ -402,12 +414,12 @@ fn fragment(
                  blended_normal = mix( blended_normal, color_from_normal, splat_strength_float  );
 
                
-            }
+            }*/
 
           //  blended_color = vec4<f32>( hsv_noise_sample.r ,0.0,0.0,1.0   );
              
         
-    }
+// }
 
     
 

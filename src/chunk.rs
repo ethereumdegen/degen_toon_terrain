@@ -1,7 +1,7 @@
 
 use crate::terrain_material::TerrainMaterialExtension;
 use crate::TerrainEditMode;
-use crate::hypersplat::ChunkSplatDataRaw;
+use crate::splat::ChunkSplatDataRaw;
 use std::time::Duration;
 use bevy::image::ImageSampler;
 use bevy::time::common_conditions::on_timer;
@@ -156,11 +156,11 @@ pub struct ChunkData {
     //pub splat_map_handles_need_reload: bool,
 
     // pub height_map_data: Option<HeightMapU16>,
-    pub splat_index_texture_handle: Option<Handle<Image>>, //rgba8uint
-    pub splat_strength_texture_handle:Option<Handle<Image>>, //rgba f32
+    pub splat_texture_handle: Option<Handle<Image>>, //rgba8uint
+//    pub splat_strength_texture_handle:Option<Handle<Image>>, //rgba f32
 
-    splat_index_texture_is_loaded: bool,
-    splat_strength_texture_is_loaded: bool, 
+    splat_texture_is_loaded: bool,
+  //  splat_texture_is_loaded: bool, 
 
    // alpha_mask_image_handle: Option<Handle<Image>>, //built from the height map
 
@@ -181,15 +181,12 @@ impl ChunkData {
     }
 
 
-    pub fn get_splat_index_texture_image(&self) -> &Option<Handle<Image>> {
-        &self.splat_index_texture_handle
+    pub fn get_splat_texture_image(&self) -> &Option<Handle<Image>> {
+        &self.splat_texture_handle
     }
 
 
-
-    pub fn get_splat_strength_texture_image(&self) -> &Option<Handle<Image>> {
-        &self.splat_strength_texture_handle
-    }
+ 
 
     pub fn get_lod_level(&self) -> u8 {
         self.lod_level.clone() 
@@ -396,17 +393,17 @@ pub fn initialize_chunk_data(
        // let temp_file_name :String = "0.png" .into();   //JUST FOR NOW 
 
         //default_terrain/splat
-        let splat_index_texture_path = terrain_config.splat_folder_path.join("index_maps").join(&file_name);
-        println!("loading from {}", splat_index_texture_path.display());
+        let splat_texture_path = terrain_config.splat_folder_path.join(&file_name);
+        println!("loading from {}", splat_texture_path.display());
 
-        let splat_index_texture_handle: Handle<Image> = asset_server.load(splat_index_texture_path);
+        let splat_texture_handle: Handle<Image> = asset_server.load(splat_texture_path);
 
 
-        let splat_strength_texture_path = terrain_config.splat_folder_path.join("strength_maps").join(&file_name);
+       /* let splat_strength_texture_path = terrain_config.splat_folder_path.join("strength_maps").join(&file_name);
         println!("loading from {}", splat_strength_texture_path.display());
 
         let splat_strength_texture_handle: Handle<Image> = asset_server.load(splat_strength_texture_path);
-
+*/
             
 
         let hsv_noise_texture = asset_server.load("embedded://degen_toon_terrain/shaders/hsv_noise.png");
@@ -425,8 +422,8 @@ pub fn initialize_chunk_data(
             height_map_image_data_load_status: TerrainImageDataLoadStatus::NotLoaded,
 
             //splat_map_handles_need_reload: false, 
-            splat_index_texture_handle:  Some(splat_index_texture_handle),
-            splat_strength_texture_handle:  Some(splat_strength_texture_handle),
+            splat_texture_handle:  Some(splat_texture_handle),
+//  splat_strength_texture_handle:  Some(splat_strength_texture_handle),
            // alpha_mask_image_handle: None, //gets set later
             material_handle: None,         //gets set later
 
@@ -434,8 +431,8 @@ pub fn initialize_chunk_data(
 
             hsv_noise_texture: Some(hsv_noise_texture) , 
 
-            splat_index_texture_is_loaded: false,
-            splat_strength_texture_is_loaded: false, 
+            splat_texture_is_loaded: false,
+          //  splat_strength_texture_is_loaded: false, 
         };
 
         commands
@@ -465,23 +462,23 @@ pub fn add_chunk_splat_data_raw(
         if chunk_data.chunk_state != ChunkState::FullyBuilt { continue ; }; 
 
             //not rly necessary? 
-        if chunk_data.splat_index_texture_is_loaded && chunk_data.splat_strength_texture_is_loaded {
+        if chunk_data.splat_texture_is_loaded   {
 
 
             if let Some(mut cmd) = commands.get_entity(  entity ) {
 
-                let Some(splat_index_texture_handle) = &chunk_data.splat_index_texture_handle else {continue};
-                let Some(splat_strength_texture_handle) = &chunk_data.splat_strength_texture_handle else {continue};
+                let Some(splat_index_texture_handle) = &chunk_data.splat_texture_handle else {continue};
+              //  let Some(splat_strength_texture_handle) = &chunk_data.splat_strength_texture_handle else {continue};
                 
 
                 let Some(splat_index_texture_image) = images.get(  splat_index_texture_handle ) else {continue};
-                let Some(splat_strength_texture_image) = images.get(  splat_strength_texture_handle ) else {continue};
+               // let Some(splat_strength_texture_image) = images.get(  splat_strength_texture_handle ) else {continue};
 
 
                 cmd.try_insert( 
                     ChunkSplatDataRaw::build_from_images(
                         splat_index_texture_image,
-                        splat_strength_texture_image
+                        //splat_strength_texture_image
                     ) 
                  );
             }
@@ -592,7 +589,7 @@ pub fn update_splat_image_formats(
                         let mut handle = Handle::Weak(*id);
 
 
-                    if chunk_data.splat_index_texture_handle == Some(handle.clone()) {
+                    if chunk_data.splat_texture_handle == Some(handle.clone()) {
                         //image_is_splat_index_texture = true
 
                          let img = images.get_mut(&mut handle).unwrap();
@@ -600,14 +597,14 @@ pub fn update_splat_image_formats(
                         img.texture_descriptor.format = TextureFormat::Rgba8Uint;
                         img.sampler = ImageSampler::nearest(); //need for bevy 0.15 
 
-                        chunk_data.splat_index_texture_is_loaded = true;
+                        chunk_data.splat_texture_is_loaded = true;
 
 
                          if let Some( terrain_material_handle ) = &  chunk_data.material_handle {
                             if let Some(terrain_material) = terrain_materials.get_mut( terrain_material_handle ){
 
 
-                             terrain_material.extension.splat_index_map_texture =  chunk_data.splat_index_texture_handle.clone() ;
+                             terrain_material.extension.splat_map_texture =  chunk_data.splat_texture_handle.clone() ;
                             // terrain_material.extension.splat_strength_map_texture = Some(chunk_splat_strength_texture.clone());
                        
                             }
@@ -617,7 +614,7 @@ pub fn update_splat_image_formats(
 
                         continue;
                     } 
-                    if chunk_data.splat_strength_texture_handle == Some(handle.clone()) {
+                  /*  if chunk_data.splat_strength_texture_handle == Some(handle.clone()) {
                         //image_is_splat_strength_texture = true
 
                         let img = images.get_mut(&mut handle).unwrap();
@@ -642,9 +639,9 @@ pub fn update_splat_image_formats(
 
                         } 
 
-                        continue;
+                            continue;
 
-                    }
+                        }*/
 
                 
 
@@ -1027,7 +1024,7 @@ pub fn build_chunk_meshes(
                 continue;
             }
 
-            if chunk_data.splat_index_texture_handle.is_none() {
+            if chunk_data.splat_texture_handle.is_none() {
                 warn!("chunk is missing splat_image_handle .");
                 continue;
             }
@@ -1260,8 +1257,8 @@ pub fn finish_chunk_build_tasks(
             let normal_texture = terrain_data.get_normal_texture_image().clone();
             let blend_height_texture = terrain_data.get_blend_height_texture_image().clone();
 
-            let splat_index_map_texture = chunk_data.get_splat_index_texture_image().clone();
-            let splat_strength_map_texture = chunk_data.get_splat_strength_texture_image().clone();
+            let splat_map_texture = chunk_data.get_splat_texture_image().clone();
+         //   let splat_strength_map_texture = chunk_data.get_splat_strength_texture_image().clone();
 
             let height_map_texture = chunk_data.get_height_map_texture_image().clone();
 
@@ -1295,9 +1292,9 @@ pub fn finish_chunk_build_tasks(
                         normal_texture: normal_texture,
                         blend_height_texture: blend_height_texture, 
 
-                        splat_index_map_texture: splat_index_map_texture,
+                        splat_map_texture: splat_map_texture,
 
-                        splat_strength_map_texture: splat_strength_map_texture, 
+                    //    splat_strength_map_texture: splat_strength_map_texture, 
 
                         hsv_noise_texture,
 
