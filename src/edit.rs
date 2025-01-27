@@ -63,6 +63,7 @@ pub enum BrushType {
     Smooth,
     Noise,
     EyeDropper,
+    RaiseLower, 
 }
 
 impl Display for BrushType {
@@ -74,6 +75,11 @@ impl Display for BrushType {
             BrushType::Smooth => "Smooth",
             BrushType::Noise => "Noise",
             BrushType::EyeDropper => "EyeDropper",
+
+             BrushType::RaiseLower => "Raise/Lower",
+         
+
+
         };
 
         write!(f, "{}", label)
@@ -446,6 +452,42 @@ pub fn apply_tool_edits(
                                         //do nothing 
 
                                      }
+
+                                     BrushType::RaiseLower => {
+                                 
+
+                                       for x in 0..img_data_length {
+                                        for y in 0..img_data_length {
+                                            let local_coords = Vec2::new(x as f32, y as f32);
+
+                                            // Check if the current point is within the brush radius
+                                            if tool_coords_local.distance(local_coords) < radius_clone {
+                                                // Compute the hardness multiplier
+                                                let hardness_multiplier = get_hardness_multiplier(
+                                                    tool_coords_local.distance(local_coords),
+                                                    radius_clone,
+                                                    *brush_hardness,
+                                                );
+
+                                                // Get the original height
+                                                let original_height = height_map_data[y][x] as f32;
+
+                                                let new_height = (height.clone() as i16) - 15000 ;
+
+                                                // Compute the new height by applying the delta
+                                                let adjusted_delta = new_height as f32 * 0.05 * hardness_multiplier;
+                                                let new_height = (original_height + adjusted_delta).clamp(0.0, u16::MAX as f32);
+
+                                                // Update the heightmap
+                                                height_map_data[y][x] = new_height as u16;
+                                                height_changed = true;
+                                            }
+                                        }
+                                    }
+
+
+                                     }
+ 
 
                                     BrushType::Smooth => {
                                         for x in 0..img_data_length {
