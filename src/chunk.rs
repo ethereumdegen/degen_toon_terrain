@@ -1228,7 +1228,7 @@ pub fn finish_chunk_build_tasks(
             let terrain_entity_id = terrain_entity.get();
 
             let chunk_uv = built_chunk_mesh_data.chunk_uv;
-            let mesh = built_chunk_mesh_data.mesh;
+            let mesh = built_chunk_mesh_data.mesh ;
 
             //despawn any old mesh children on this chunk
             if let Ok(chunk_children) = chunk_with_children_query.get(chunk_entity_id) {

@@ -5,7 +5,7 @@
  
  #import degen_toon_terrain::toon_lighting::{calculate_toon_lighting,ToonShaderMaterial}
 
-// #import degen_toon_terrain::custom_pbr_functions 
+ #import degen_toon_terrain::stochastic_sampling 
 
  #import bevy_pbr::{
     forward_io::{VertexOutput, FragmentOutput},
@@ -236,13 +236,31 @@ fn fragment(
     //let tiled_uv = chunk_uniforms.color_texture_expansion_factor*mesh.uv;  //cannot get this binding to work !? 
     let tiled_uv =  chunk_uniforms.color_texture_expansion_factor*mesh.uv;
     
+
+
+ 
+  // var special_mesh_uv =  stochastic_sampling::get_stochastic_sample_uv( mesh.uv  , 0.5);
+  //   special_mesh_uv = clamp(special_mesh_uv, vec2<f32>(0.0), vec2<f32>(1.0));
+
+
     
     // seems to be working !! yay ! makes our splat texture encompass all of the chunks 
-    let splat_uv = chunk_uniforms.chunk_uv.xy + mesh.uv * (chunk_uniforms.chunk_uv.zw - chunk_uniforms.chunk_uv.xy);
+    var  splat_uv = chunk_uniforms.chunk_uv.xy + mesh.uv * (chunk_uniforms.chunk_uv.zw - chunk_uniforms.chunk_uv.xy);
     
     //let splat_values = textureSample(splat_map_texture, splat_map_sampler, splat_uv );
         
 
+
+  //  let s = smoothstep(0.4, 0.6, sin(globals.time * speed));
+   // splat_uv =  stochastic_sampling::get_stochastic_sample_uv( splat_uv  , 0.5);  //uses simplex noise and sin/cos...
+   // splat_uv = clamp(splat_uv, vec2<f32>(0.0), vec2<f32>(1.0));
+ 
+
+      // Apply stochastic sampling to splat_uv
+      //  splat_uv = stochastic_sampling::get_stochastic_sample_uv(splat_uv, 0.5);
+
+        // Clamp splat_uv to ensure valid texture sampling
+     //   splat_uv = clamp(splat_uv, vec2<f32>(0.0), vec2<f32>(1.0));
 
 
 
@@ -563,12 +581,20 @@ fn fragment(
 // https://github.com/bevyengine/bevy/blob/main/assets/shaders/array_texture.wgsl 
     
     
-    let tangent = normalize( blended_normal_vec3 );
+    let normal_from_material = normalize( blended_normal_vec3 );
+
+
+
+
+    let world_normal_with_noise = normalize( mesh.world_normal   +  (   hsv_noise_sample.rgb * 0.2));
+
 
     //we mix the normal with our sample so shadows are affected by the normal map ! 
-    let normal_mixed = mix( normalize( mesh.world_normal   +  (   hsv_noise_sample.rgb * 0.2)) , normalize( tangent ) , 0.5 );
+    let normal_mixed = mix( world_normal_with_noise  , normalize( normal_from_material ) , 0.9 );
 
 
+
+    pbr_input.N  = normal_mixed;
 
     /*
     let tangent = normalize( blended_normal_vec3 );
@@ -624,10 +650,15 @@ fn fragment(
 
    // pbr_input.N  = vec3<f32>(0.0,1.0,0.0);
 
-    pbr_out.color = apply_pbr_lighting(pbr_input);  //add shadows   //re do me ! 
+
+    //let computed_pbr_lighting =  compute_pbr_lighting( pbr_input ) ; 
+
+    pbr_out.color =  apply_pbr_lighting(pbr_input);  //add shadows   //re do me ! 
    
 
       pbr_out.color *= toon_material.color   ; 
+
+     //pbr_out.color = quantize_color( pbr_out.color , 32u  );
 
 
     // View direction
@@ -640,7 +671,7 @@ fn fragment(
     let toon_lighting = calculate_toon_lighting( normal_mixed , view_dir, toon_material.sun_dir, toon_material.sun_color );
 
 
-    pbr_out.color  *= (toon_lighting + toon_material.ambient_color);  
+  //  pbr_out.color  *= (toon_lighting + toon_material.ambient_color);  
 
     
     // pbr_out.color = vec4<f32>(viewport_uv.x, viewport_uv.y, 0.0, 1.0) ; 
@@ -691,5 +722,39 @@ fn fragment(
   // https://github.com/nicopap/bevy_mod_paramap/blob/main/src/parallax_map.wgsl
 
  //later ? 
+/*
+ fn quantize_color(color: vec4<f32>, bands: u32) -> vec4<f32> {
+    // Ensure at least one band (no quantization if bands == 1)
+    let num_bands = max(bands, 1u);
 
- 
+    // Calculate the band size
+    let band_size = 1.0 / f32(num_bands);
+
+    // Quantize each color component separately (RGB only, leave alpha untouched)
+    let quantized_rgb = floor(color.rgb / band_size) * band_size;
+
+    // Return quantized color with original alpha
+    return vec4<f32>(quantized_rgb, color.a);
+}
+*/
+
+
+/*
+fn quantize_color(color: vec4<f32>, bands: u32) -> vec4<f32> {
+    // Ensure at least one band (no quantization if bands <= 1)
+    let num_bands = max(bands, 1u);
+
+    // Calculate the band size
+    let band_factor = f32(num_bands);
+
+    // Guard against very small band sizes to avoid precision issues
+    if (band_factor <= 0.0) {
+        return color;
+    }
+
+    // Quantize each color component separately (RGB only, leave alpha untouched)
+    let quantized_rgb = floor(color.rgb * band_factor) / band_factor;
+
+    // Return quantized color with original alpha
+    return vec4<f32>(quantized_rgb, color.a);
+}*/

@@ -16,7 +16,7 @@ use bevy::pbr::MaterialExtension;
 
 pub type TerrainMaterialExtension = ExtendedMaterial<StandardMaterial, TerrainMaterial>;
 
-
+pub const STOCHASTIC_SAMPLING_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(9361246082289374612);
 pub const CUSTOM_PBR_FUNCTIONS_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(5475846082289374612);
 pub const TOON_LIGHTING_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(5475846082284647579);
 pub const TERRAIN_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(5433284082028047579);

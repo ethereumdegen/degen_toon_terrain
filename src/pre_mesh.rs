@@ -1,4 +1,5 @@
  
+use bevy::prelude::Vec3;
 use crate::heightmap::HeightMapU16;
 use bevy::prelude::{Mesh, Vec2};
 use bevy::render::mesh::Indices;
@@ -14,7 +15,7 @@ const THRESHOLD: u16 = (0.0001 * 65535.0) as u16;
 pub struct PreMesh {
     positions: Vec<[f32; 3]>,
     uvs: Vec<[f32; 2]>,
-    normals: Vec<[f32; 3]>,
+   // normals: Vec<[f32; 3]>,
     indices: Vec<u32>,
 }
 
@@ -23,12 +24,14 @@ impl PreMesh {
         Self {
             positions: Vec::new(),
             uvs: Vec::new(),
-            normals: Vec::new(),
+         //   normals: Vec::new(),
             indices: Vec::new(),
         }
     }
 
-    fn calculate_smooth_normals(&mut self) {
+
+    // use the fn that is in mesh !! 
+ /*   fn calculate_smooth_normals(&mut self) {
         let mut vertex_normals_accum: Vec<[f32; 3]> = vec![[0.0, 0.0, 0.0]; self.positions.len()];
 
         // Step 1: Calculate face normals and accumulate them for each vertex
@@ -64,7 +67,71 @@ impl PreMesh {
 
         // Step 4: Assign averaged normals to the mesh
         self.normals = vertex_normals_accum;
+    }*/
+
+
+fn compute_smooth_normals(&self) -> Vec<[f32; 3]> {
+    let mut normals: Vec<[f32; 3]> = vec![[0.0, 0.0, 0.0]; self.positions.len()];
+    let mut count: Vec<u32> = vec![0; self.positions.len()];
+
+    // Iterate over each triangle using the indices
+    for triangle in self.indices.chunks(3) {
+        if let &[i0, i1, i2] = triangle {
+            // Get the positions of the triangle vertices
+            let p0 = self.positions[i0 as usize];
+            let p1 = self.positions[i1 as usize];
+            let p2 = self.positions[i2 as usize];
+
+            // Calculate the normal for the triangle
+            let v0 = [
+                p1[0] - p0[0],
+                p1[1] - p0[1],
+                p1[2] - p0[2],
+            ];
+            let v1 = [
+                p2[0] - p0[0],
+                p2[1] - p0[1],
+                p2[2] - p0[2],
+            ];
+            let normal = [
+                v0[1] * v1[2] - v0[2] * v1[1],
+                v0[2] * v1[0] - v0[0] * v1[2],
+                v0[0] * v1[1] - v0[1] * v1[0],
+            ];
+
+            // Accumulate the normal into each vertex's normal
+            for &index in &[i0, i1, i2] {
+                let idx = index as usize;
+                normals[idx][0] += normal[0];
+                normals[idx][1] += normal[1];
+                normals[idx][2] += normal[2];
+                count[idx] += 1;
+            }
+        }
     }
+
+    // Normalize the normals
+    for (normal, &c) in normals.iter_mut().zip(&count) {
+        if c > 0 {
+            let scale = 1.0 / (c as f32);
+            normal[0] *= scale;
+            normal[1] *= scale;
+            normal[2] *= scale;
+
+            // Normalize the vector length
+            let length = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+            if length > 0.0 {
+                normal[0] /= length;
+                normal[1] /= length;
+                normal[2] /= length;
+            }
+        }
+    }
+
+    normals
+}
+
+
 
     fn add_triangle(&mut self, positions: [[f32; 3]; 3], uvs: [[f32; 2]; 3]) {
         // Add vertices and indices
@@ -85,13 +152,20 @@ impl PreMesh {
 
     pub fn build(self) -> Mesh {
         let mut mesh = Mesh::new(TriangleList, RenderAssetUsages::default());
+
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.compute_smooth_normals());
+
+
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, self.positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, self.uvs);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
+     
         mesh.insert_indices(Indices::U32(self.indices));
 
+
+
+
        // mesh.generate_tangents().unwrap(); 
-        mesh
+        mesh   //doesnt work !? 
     }
 
     /*
@@ -118,8 +192,8 @@ impl PreMesh {
 
       //  let bounds_pct: [[f32; 2]; 2] = [[0.0, 0.0], [1.0, 1.0]]; //1.0 is the max right ?
 
-        let sub_heightmap_height = height_data.len();
-        let sub_heightmap_width = height_data[0].len();
+      //  let sub_heightmap_height = height_data.len();
+     //   let sub_heightmap_width = height_data[0].len();
 
         //println!("sub_heightmap_width {}", sub_heightmap_width);
         //println!("sub_heightmap_height {}", sub_heightmap_height);
@@ -127,13 +201,13 @@ impl PreMesh {
         let tex_dim_x = texture_dimensions.get(0).unwrap().clone();
         let tex_dim_y = texture_dimensions.get(1).unwrap().clone();
 
-        let width_scale = 1.0;
+       // let width_scale = 1.0;
 
         //tris completely below this will be skipped
-        let scaled_min_threshold = (THRESHOLD as f32) * height_scale;
+       // let scaled_min_threshold = (THRESHOLD as f32) * height_scale;
 
 
-          let threshold = 0.1; // Adjust based on desired flatness sensitivity
+          let threshold =  THRESHOLD as f32; // Adjust based on desired flatness sensitivity
 
 
             let max_recursion_at_highest_lod  = 3;
@@ -184,7 +258,8 @@ impl PreMesh {
             }
         }
 
-        premesh.calculate_smooth_normals();
+        //this will happen later.. 
+       // premesh.calculate_smooth_normals();
 
         premesh
     }
@@ -216,7 +291,7 @@ fn refine_tile(
 
 
 
-   let fx = x as f32;
+    let fx = x as f32;
     let fz = z as f32;
 
 
@@ -318,12 +393,32 @@ fn refine_tile(
    // let back_mid = (lb + rb) / 2.0;
 
 
-      // Sample heights
-       let center = height_data[z + half_step][x+half_step]  as f32 ; 
-      let left_mid = height_data[z + half_step][x] as f32 ;
-    let right_mid = height_data[z + half_step][x + step_size] as f32 ;
-    let forward_mid = height_data[z + step_size][x + half_step] as f32 ;
-    let back_mid = height_data[z][x + half_step] as f32 ;
+      // Sample heights from the actual height map 
+         
+        let center_sampled = height_data[z + half_step][x + half_step] as f32;
+        let left_mid_sampled = height_data[z + half_step][x] as f32;
+        let right_mid_sampled = height_data[z + half_step][x + step_size] as f32;
+        let forward_mid_sampled = height_data[z + step_size][x + half_step] as f32;
+        let back_mid_sampled = height_data[z][x + half_step] as f32;
+
+        // Interpolated heights
+        let center_interpolated = (lb + lf + rb + rf) / 4.0;
+        let left_mid_interpolated = (lb + lf) / 2.0;
+        let right_mid_interpolated = (rb + rf) / 2.0;
+        let forward_mid_interpolated = (lf + rf) / 2.0;
+        let back_mid_interpolated = (lb + rb) / 2.0;
+
+        // Mix sampled and interpolated heights
+        let mix_factor = 0.5; // Adjust this factor to control blending SMOOOTHING 
+
+        let center = mix_factor * center_sampled + (1.0 - mix_factor) * center_interpolated;
+        let left_mid = mix_factor * left_mid_sampled + (1.0 - mix_factor) * left_mid_interpolated;
+        let right_mid = mix_factor * right_mid_sampled + (1.0 - mix_factor) * right_mid_interpolated;
+        let forward_mid = mix_factor * forward_mid_sampled + (1.0 - mix_factor) * forward_mid_interpolated;
+        let back_mid = mix_factor * back_mid_sampled + (1.0 - mix_factor) * back_mid_interpolated;
+
+
+
 
 
   /*  println!(
@@ -703,7 +798,8 @@ fn bilinear_interpolate(
             } // x loop
         } // x loop
 
-        premesh.calculate_smooth_normals();
+        //this will be done later ! 
+     //   premesh.calculate_smooth_normals();
 
         premesh
     }

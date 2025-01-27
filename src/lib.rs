@@ -1,5 +1,6 @@
  
 
+use crate::terrain_material::STOCHASTIC_SAMPLING_SHADER_HANDLE;
 use bevy::asset::embedded_asset;
 use bevy::time::common_conditions::on_timer;
 use bevy::{asset::load_internal_asset, prelude::*};
@@ -65,6 +66,13 @@ impl Plugin for TerrainMeshPlugin {
             app,
             TOON_LIGHTING_SHADER_HANDLE,
             "shaders/toon_lighting.wgsl",
+            Shader::from_wgsl
+        );
+
+          load_internal_asset!(
+            app,
+            STOCHASTIC_SAMPLING_SHADER_HANDLE,
+            "shaders/stochastic_sampling.wgsl",
             Shader::from_wgsl
         );
 
