@@ -32,14 +32,9 @@ cargo run --example basic
  
 
  
- 
- ![image](https://github.com/user-attachments/assets/f7c68b56-62b1-494e-8cf0-623b319cd28e)
-
-![image](https://github.com/user-attachments/assets/a1f040f7-9a48-4ecb-8157-67705060e266)
+ ![image](https://github.com/user-attachments/assets/cbc03908-91b6-41c6-b7d7-192d9ae36e76)
 
  
- ![image](https://github.com/ethereumdegen/bevy_mesh_terrain/assets/6249263/492f8212-8d08-460c-ae54-7d7a0022eb95)
-
 
 ## Texture Types 
 
