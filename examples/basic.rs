@@ -1,3 +1,6 @@
+use bevy::image::ImageAddressMode;
+use bevy::image::ImageSamplerDescriptor;
+use bevy::image::ImageFilterMode; 
 use degen_toon_terrain::terrain_material::ToonShaderSun;
 use bevy::pbr::wireframe::WireframeConfig;
 use bevy::render::RenderPlugin;
@@ -42,13 +45,36 @@ fn main() {
                     ..default()
                 }),
                 ..default()
-            }),
+            })
+                 .set( 
+             ImagePlugin{
+                default_sampler: ImageSamplerDescriptor{
+
+                          address_mode_u: ImageAddressMode::Repeat,
+                    /// How to deal with out of bounds accesses in the v (i.e. y) direction.
+                      address_mode_v: ImageAddressMode::Repeat,
+                    /// How to deal with out of bounds accesses in the w (i.e. z) direction.
+                      address_mode_w: ImageAddressMode::Repeat,
+                    /// How to filter the texture when it needs to be magnified (made larger).
+                      mag_filter: ImageFilterMode::Nearest,
+                    /// How to filter the texture when it needs to be minified (made smaller).
+                      min_filter: ImageFilterMode::Nearest,
+                         ..default() 
+                }
+               
+             } ) 
+             ,
             // You need to add this plugin to enable wireframe rendering
             WireframePlugin,
         ))
+
+
         .add_plugins(TerrainMeshPlugin {
             terrain_edit_mode: TerrainEditMode::TerrainEditable
         })
+
+     //    .set(ImagePlugin::default_nearest());
+    
         
         .insert_resource(WireframeConfig {
             // The global wireframe config enables drawing of wireframes on every mesh,

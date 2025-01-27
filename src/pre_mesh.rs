@@ -111,7 +111,7 @@ impl PreMesh {
 
        // println!("using lod level {:?}", lod_level);
 
-        let step_size = 1 << lod_level; // doubles the step for each LOD level using bit shifting
+      //  let step_size = 1 << lod_level; // doubles the step for each LOD level using bit shifting
 
         let height_data = &sub_heightmap ;
         
@@ -132,72 +132,55 @@ impl PreMesh {
         //tris completely below this will be skipped
         let scaled_min_threshold = (THRESHOLD as f32) * height_scale;
 
+
+          let threshold = 0.1; // Adjust based on desired flatness sensitivity
+
+
+            let max_recursion_at_highest_lod  = 3;
+             let max_recursion = (max_recursion_at_highest_lod - lod_level ).clamp( 0, 3 )  ; // Limit recursion depth to prevent over-tessellation
+
+             println!("max_recursion {}", max_recursion);
+
+             let step_size = 1 << max_recursion_at_highest_lod ; 
+
         //there is a weird bug where there are gaps in betweeen each chunk ...
         for x in (0..(tex_dim_x as usize - step_size) as usize).step_by(step_size) {
          for z in (0..(tex_dim_y as usize - step_size) as usize).step_by(step_size) {
-          
-          //  for z in (0..(tex_dim_y as usize - step_size) as usize).step_by(step_size) {
-                let fx = (x) as f32 * width_scale;
-                let fz = (z) as f32 * width_scale;
+            
 
-                let mut sample_allowed = true;
-                //cant sample so we just continue
-               if x + step_size >= sub_heightmap_width as usize {
-                    sample_allowed = false;
-                  //  warn!("x {}", x + step_size);
-                }
-                if z + step_size >= sub_heightmap_height as usize {
-                    sample_allowed = false;
-                  //  warn!("z {}", z + step_size);
-                }  
 
-                // height data is in format [y][x] 
-                // 1. flipped x and z here ... 
-                // 2. 
-                let (lb, lf, rb, rf) = match sample_allowed {
-                    true => {
-                        let lb = height_data[z][x] as f32 * height_scale;
-                        let lf = height_data[z+ step_size][x ] as f32 * height_scale;
-                        let rb = height_data[z][x + step_size] as f32 * height_scale;
-                        let rf = height_data[z + step_size][x + step_size] as f32 * height_scale;
-                        (lb, lf, rb, rf)
-                    }
-                    false => (0.0, 0.0, 0.0, 0.0),
-                };
 
-                //if the triangle would be completely under the threshold,
-                //do not add it to the mesh at all.  This makes a hole for collision
-                //since this mesh is used to generate the collider
-                if lb < scaled_min_threshold
-                    && lf < scaled_min_threshold
-                    && rb < scaled_min_threshold
-                    && rf < scaled_min_threshold
-                {
+                // Check if sampling is allowed
+                if x + step_size >= height_data[0].len() || z + step_size >= height_data.len() {
                     continue;
                 }
 
-                /* let lb = height_data[x][y] as f32 * height_scale;
-                let lf = height_data[x][y + step_size] as f32 * height_scale;
-                let rb = height_data[x + step_size][y] as f32 * height_scale;
-                let rf = height_data[x + step_size][y + step_size] as f32 * height_scale;*/
+                // Sample heights
+                let lb = height_data[z][x]    ;
+                let lf = height_data[z + step_size][x]  ;
+                let rb = height_data[z][x + step_size]  ;
+                let rf = height_data[z + step_size][x + step_size]  ;
 
-                let uv_lb = compute_uv(fx, fz, texture_dimensions);
-                let uv_rb = compute_uv(fx + step_size as f32, fz,  texture_dimensions);
-                let uv_rf = compute_uv(
-                    fx + step_size as f32,
-                    fz + step_size as f32,
-                    
-                    texture_dimensions,
-                );
-                let uv_lf = compute_uv(fx, fz + step_size as f32,  texture_dimensions);
 
-                let left_back = [fx, lb, fz];
-                let right_back = [fx + step_size as f32, rb, fz];
-                let right_front = [fx + step_size as f32, rf, fz + step_size as f32];
-                let left_front = [fx, lf, fz + step_size as f32];
+                //adaptive tesselation 
+            Self::refine_tile(
+                &mut premesh,
+                 sub_heightmap,
+                texture_dimensions,
+                x,
+                z,
+                step_size,
+                lod_level,
+                height_scale,
+                threshold,
+                max_recursion,
+                0,
 
-                premesh.add_triangle([left_front, right_back, left_back], [uv_lf, uv_rb, uv_lb]);
-                premesh.add_triangle([right_front, right_back, left_front], [uv_rf, uv_rb, uv_lf]);
+                lb as f32, lf  as f32, rb  as f32, rf   as f32
+            );
+
+
+           
             }
         }
 
@@ -205,6 +188,273 @@ impl PreMesh {
 
         premesh
     }
+
+
+
+
+// build tile recursively with adaptive tesselation 
+fn refine_tile(
+    premesh: &mut Self,
+    height_data: &HeightMapU16,
+    texture_dimensions: [f32; 2],
+    x: usize,
+    z: usize,
+    step_size: usize,
+    lod_level: u8,
+    height_scale: f32,
+     threshold: f32, // not used rn 
+    max_recursion: u8,
+    recursion_level: u8,
+
+      lb: f32,
+    lf: f32,
+    rb: f32,
+    rf: f32,
+
+) {
+    
+
+
+
+   let fx = x as f32;
+    let fz = z as f32;
+
+
+    // Check if flat
+    
+
+    let max_height = lb.max(lf).max(rb).max(rf);
+    let min_height = lb.min(lf).min(rb).min(rf);
+    let flat_section = (max_height - min_height) < threshold;
+
+
+    
+  if flat_section || recursion_level >= max_recursion{
+
+
+            //if we are maxed out , lets push it even harder with linear interpolation 
+              let use_extreme_resolution = recursion_level == max_recursion ;
+
+                if use_extreme_resolution {
+
+                    // Calculate midpoints
+                    let step_half = step_size as f32 / 2.0;
+
+                    let center = (lb + lf + rb + rf) / 4.0;
+                    let left_mid = (lb + lf) / 2.0;
+                    let right_mid = (rb + rf) / 2.0;
+                    let top_mid = (lf + rf) / 2.0;
+                    let bottom_mid = (lb + rb) / 2.0;
+
+                    // Compute UVs
+                    let uv_lb = compute_uv(fx, fz, texture_dimensions);
+                    let uv_rb = compute_uv(fx + step_size as f32, fz, texture_dimensions);
+                    let uv_rf = compute_uv(fx + step_size as f32, fz + step_size as f32, texture_dimensions);
+                    let uv_lf = compute_uv(fx, fz + step_size as f32, texture_dimensions);
+                    let uv_center = compute_uv(fx + step_half, fz + step_half, texture_dimensions);
+                    let uv_left_mid = compute_uv(fx, fz + step_half, texture_dimensions);
+                    let uv_right_mid = compute_uv(fx + step_size as f32, fz + step_half, texture_dimensions);
+                    let uv_top_mid = compute_uv(fx + step_half, fz + step_size as f32, texture_dimensions);
+                    let uv_bottom_mid = compute_uv(fx + step_half, fz, texture_dimensions);
+
+                    // Define positions
+                    let left_back = [fx, lb  * height_scale , fz];
+                    let right_back = [fx + step_size as f32, rb * height_scale , fz];
+                    let right_front = [fx + step_size as f32, rf * height_scale, fz + step_size as f32];
+                    let left_front = [fx, lf * height_scale, fz + step_size as f32];
+                    let center_pos = [fx + step_half, center * height_scale, fz + step_half];
+                    let left_mid_pos = [fx, left_mid * height_scale, fz + step_half];
+                    let right_mid_pos = [fx + step_size as f32, right_mid * height_scale, fz + step_half];
+                    let top_mid_pos = [fx + step_half, top_mid * height_scale, fz + step_size as f32];
+                    let bottom_mid_pos = [fx + step_half, bottom_mid * height_scale, fz];
+
+                    // Add triangles
+                    premesh.add_triangle([left_back, left_mid_pos, center_pos], [uv_lb, uv_left_mid, uv_center]);
+                    premesh.add_triangle([left_mid_pos, left_front, center_pos], [uv_left_mid, uv_lf, uv_center]);
+                    premesh.add_triangle([left_front, top_mid_pos, center_pos], [uv_lf, uv_top_mid, uv_center]);
+                    premesh.add_triangle([top_mid_pos, right_front, center_pos], [uv_top_mid, uv_rf, uv_center]);
+                    premesh.add_triangle([right_front, right_mid_pos, center_pos], [uv_rf, uv_right_mid, uv_center]);
+                    premesh.add_triangle([right_mid_pos, right_back, center_pos], [uv_right_mid, uv_rb, uv_center]);
+                    premesh.add_triangle([right_back, bottom_mid_pos, center_pos], [uv_rb, uv_bottom_mid, uv_center]);
+                    premesh.add_triangle([bottom_mid_pos, left_back, center_pos], [uv_bottom_mid, uv_lb, uv_center]);
+                }else {
+
+
+                        // Render flat tile early
+                    let uv_lb = compute_uv(fx, fz, texture_dimensions);
+                    let uv_rb = compute_uv(fx + step_size as f32, fz, texture_dimensions);
+                    let uv_rf = compute_uv(fx + step_size as f32, fz + step_size as f32, texture_dimensions);
+                    let uv_lf = compute_uv(fx, fz + step_size as f32, texture_dimensions);
+
+                    let lb_scaled = lb * height_scale;
+                    let rb_scaled = rb * height_scale;
+                    let rf_scaled = rf * height_scale;
+                    let lf_scaled = lf * height_scale;
+
+                    let left_back = [fx, lb_scaled, fz];
+                    let right_back = [fx + step_size as f32, rb_scaled, fz];
+                    let right_front = [fx + step_size as f32, rf_scaled, fz + step_size as f32];
+                    let left_front = [fx, lf_scaled, fz + step_size as f32];
+
+                    premesh.add_triangle([left_front, right_back, left_back], [uv_lf, uv_rb, uv_lb]);
+                    premesh.add_triangle([right_front, right_back, left_front], [uv_rf, uv_rb, uv_lf]);
+
+
+
+                }
+
+ 
+
+
+} else {
+    // Subdivide non-flat tile
+    let half_step = step_size / 2;
+
+
+   // let center = (lb + lf + rb + rf) / 4.0;
+   // let left_mid = (lb + lf) / 2.0;
+   // let right_mid = (rb + rf) / 2.0;
+    //let forward_mid = (lf + rf) / 2.0;
+   // let back_mid = (lb + rb) / 2.0;
+
+
+      // Sample heights
+       let center = height_data[z + half_step][x+half_step]  as f32 ; 
+      let left_mid = height_data[z + half_step][x] as f32 ;
+    let right_mid = height_data[z + half_step][x + step_size] as f32 ;
+    let forward_mid = height_data[z + step_size][x + half_step] as f32 ;
+    let back_mid = height_data[z][x + half_step] as f32 ;
+
+
+  /*  println!(
+    "Tile ({}, {}), level {}: center={}, left_mid={}, right_mid={}, top_mid={}, bottom_mid={}",
+    x, z, recursion_level, center, left_mid, right_mid, forward_mid, back_mid
+);*/
+
+    // Recursive refinement
+    Self::refine_tile(
+        premesh,
+        height_data,
+        texture_dimensions,
+        x,
+        z,
+        half_step,
+        lod_level,
+        height_scale,
+        threshold,
+        max_recursion,
+        recursion_level + 1,
+        lb,
+        left_mid,
+        back_mid,
+        center,
+    );
+    Self::refine_tile(
+        premesh,
+        height_data,
+        texture_dimensions,
+        x + half_step,
+        z,
+        half_step,
+        lod_level,
+        height_scale,
+        threshold,
+        max_recursion,
+        recursion_level + 1,
+        back_mid,
+        center,
+        rb,
+        right_mid,
+    );
+    Self::refine_tile(
+        premesh,
+        height_data,
+        texture_dimensions,
+        x,
+        z + half_step,
+        half_step,
+        lod_level,
+        height_scale,
+        threshold,
+        max_recursion,
+        recursion_level + 1,
+        left_mid,
+        lf,
+        center,
+        forward_mid,
+    );
+    Self::refine_tile(
+        premesh,
+        height_data,
+        texture_dimensions,
+        x + half_step,
+        z + half_step,
+        half_step,
+        lod_level,
+        height_scale,
+        threshold,
+        max_recursion,
+        recursion_level + 1,
+        center,
+        forward_mid,
+        right_mid,
+        rf,
+    );
+}
+
+}
+
+
+
+
+
+
+/*
+
+fn bilinear_interpolate(
+    height_data: &HeightMapU16,
+    height_scale: f32,
+    x: f32,
+    z: f32,
+) -> f32 {
+    let x0 = x.floor() as usize;
+    let x1 = x0 + 1;
+    let z0 = z.floor() as usize;
+    let z1 = z0 + 1;
+
+    let q00 = height_data[z0][x0] as f32 * height_scale;
+    let q01 = height_data[z1][x0] as f32 * height_scale;
+    let q10 = height_data[z0][x1] as f32 * height_scale;
+    let q11 = height_data[z1][x1] as f32 * height_scale;
+
+    let tx = x - x0 as f32;
+    let tz = z - z0 as f32;
+
+    let a = q00 * (1.0 - tx) + q10 * tx;
+    let b = q01 * (1.0 - tx) + q11 * tx;
+
+    a * (1.0 - tz) + b * tz
+}
+
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     pub fn from_heightmap_subsection_greedy(
         sub_heightmap: & HeightMapU16,

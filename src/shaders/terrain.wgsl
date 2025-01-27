@@ -5,10 +5,14 @@
  
  #import degen_toon_terrain::toon_lighting::{calculate_toon_lighting,ToonShaderMaterial}
 
+// #import degen_toon_terrain::custom_pbr_functions 
 
  #import bevy_pbr::{
     forward_io::{VertexOutput, FragmentOutput},
       mesh_view_bindings::view,
+
+      utils::coords_to_viewport_uv,
+
 
       pbr_bindings,
     
@@ -158,6 +162,13 @@ var vertex_color_tint_sampler: sampler;
 var hsv_noise_texture: texture_2d<f32>; 
 @group(2) @binding(39)
 var hsv_noise_sampler: sampler;
+
+
+
+@group(2) @binding(40)
+var shadow_noise_texture: texture_2d<f32>; 
+@group(2) @binding(41)
+var shadow_noise_sampler: sampler;
 
 
 const BLEND_HEIGHT_OVERRIDE_THRESHOLD:f32 = 0.8;
@@ -448,6 +459,10 @@ fn fragment(
 
 
 
+              
+ 
+
+
             //  blended_color = mix( blended_color , secondary_plane_color_from_diffuse_A ,   planar_lerp_weights.x );
              //  blended_color = mix( blended_color , secondary_plane_color_from_diffuse_B ,   planar_lerp_weights.z );
  
@@ -590,13 +605,27 @@ fn fragment(
    */
 
 
+
+
+         let viewport_uv = coords_to_viewport_uv(mesh.position.xy, view.viewport);
+           
+            
+       
+            
+     // let shadow_noise_sample_mesh = textureSample(shadow_noise_texture, shadow_noise_sampler, mesh.world_position.xz * 8 ) ;
+     //  let shadow_noise_sample_viewport = textureSample(shadow_noise_texture, shadow_noise_sampler, viewport_uv * 8 ) ;
+    
+      // let shadow_noise = mix (shadow_noise_sample_mesh, shadow_noise_sample_viewport , 0.5 ) ;   
+
+
+
+
     var pbr_out: FragmentOutput;
 
    // pbr_input.N  = vec3<f32>(0.0,1.0,0.0);
 
-    pbr_out.color = apply_pbr_lighting(pbr_input);  //add shadows 
-     pbr_out.color = main_pass_post_lighting_processing(pbr_input, pbr_out.color); //add fog 
-      pbr_out.color =  tone_mapping(pbr_out.color, view.color_grading);  // add tone mapping 
+    pbr_out.color = apply_pbr_lighting(pbr_input);  //add shadows   //re do me ! 
+   
 
       pbr_out.color *= toon_material.color   ; 
 
@@ -611,10 +640,15 @@ fn fragment(
     let toon_lighting = calculate_toon_lighting( normal_mixed , view_dir, toon_material.sun_dir, toon_material.sun_color );
 
 
-     pbr_out.color  *= (toon_lighting + toon_material.ambient_color);  
+    pbr_out.color  *= (toon_lighting + toon_material.ambient_color);  
+
+    
+    // pbr_out.color = vec4<f32>(viewport_uv.x, viewport_uv.y, 0.0, 1.0) ; 
+
+   //pbr_out.color =   vec4<f32>(frag_coord.xy / 1000.0, 0.0, 1.0);
  
-
-
+     //  pbr_out.color = main_pass_post_lighting_processing(pbr_input, pbr_out.color); //add fog 
+    //  pbr_out.color =  tone_mapping(pbr_out.color, view.color_grading);  // add tone mapping 
 
 
 

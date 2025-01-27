@@ -43,6 +43,7 @@ pub fn chunks_plugin(app: &mut App){
     //.insert_resource(ChunkSplatMapResource::default())
     .insert_resource(ChunkMeshBuildTaskCounterResource::default())
 
+    .register_type::<RenderChunkAtLod>()
 
     .add_observer( handle_trigger_terrain_image_data_needs_reload )
 
@@ -138,7 +139,8 @@ pub struct ChunkMeshBuildTaskCounterResource {
 
 
 
-#[derive(Component)]
+#[derive(Component,Reflect)]
+#[reflect(Component)]
 pub struct RenderChunkAtLod(u8);
 
 #[derive(Component)]
@@ -167,6 +169,8 @@ pub struct ChunkData {
     pub material_handle: Option<Handle<TerrainMaterialExtension>>,
 
     pub hsv_noise_texture: Option<Handle<Image>>,
+
+   
 
     //add to me later.. 
     pub vertex_color_tint_texture: Option<Handle<Image>>,
@@ -405,7 +409,7 @@ pub fn initialize_chunk_data(
         let splat_strength_texture_handle: Handle<Image> = asset_server.load(splat_strength_texture_path);
 */
             
-
+        
         let hsv_noise_texture = asset_server.load("embedded://degen_toon_terrain/shaders/hsv_noise.png");
 
             //to start off, render at low LOD 
@@ -430,6 +434,7 @@ pub fn initialize_chunk_data(
             vertex_color_tint_texture: None, 
 
             hsv_noise_texture: Some(hsv_noise_texture) , 
+          
 
             splat_texture_is_loaded: false,
           //  splat_strength_texture_is_loaded: false, 
@@ -724,14 +729,9 @@ pub fn add_render_chunk_at_lod_component(
 
         let lod_distance = terrain_config.lod_distance; 
 
-        let mut lod_level = (chunk_distance / lod_distance) as i32;
+        let   lod_level =  ((chunk_distance / lod_distance) as i32).clamp(0,2);
 
-        if lod_level > LOWEST_LOW_LEVEL as i32 {
-            lod_level = LOWEST_LOW_LEVEL as i32;
-        }
-        if lod_level < 0 {
-            lod_level = 0;
-        }
+      
 
         commands.entity(chunk_entity).try_insert( RenderChunkAtLod(lod_level as u8) );
 
@@ -1264,6 +1264,7 @@ pub fn finish_chunk_build_tasks(
             let height_map_texture = chunk_data.get_height_map_texture_image().clone();
 
             let hsv_noise_texture = chunk_data.hsv_noise_texture.clone(); 
+          
 
             let chunk_terrain_material: Handle<TerrainMaterialExtension> =
                 terrain_materials.add(ExtendedMaterial {
@@ -1299,6 +1300,7 @@ pub fn finish_chunk_build_tasks(
                     //    splat_strength_map_texture: splat_strength_map_texture, 
 
                         hsv_noise_texture,
+                       
 
                       //  splat_texture: splat_texture.clone(),
                         height_map_texture: height_map_texture.clone(),

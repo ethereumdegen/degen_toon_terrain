@@ -17,7 +17,7 @@ use bevy::pbr::MaterialExtension;
 pub type TerrainMaterialExtension = ExtendedMaterial<StandardMaterial, TerrainMaterial>;
 
 
-
+pub const CUSTOM_PBR_FUNCTIONS_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(5475846082289374612);
 pub const TOON_LIGHTING_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(5475846082284647579);
 pub const TERRAIN_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(5433284082028047579);
 
@@ -122,6 +122,12 @@ pub struct TerrainMaterial {
     #[texture(38)]
     #[sampler(39)]
     pub hsv_noise_texture: Option<Handle<Image>>,
+
+
+    //#[texture(40)]
+    //#[sampler(41)]
+    //pub shadow_noise_texture: Option<Handle<Image>>,
+
 
 
 }

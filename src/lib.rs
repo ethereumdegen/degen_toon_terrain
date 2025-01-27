@@ -15,8 +15,8 @@ use std::time::Duration;
 //use collision::spawn_chunk_collision_data;
 
 use crate::terrain_material::TerrainMaterialExtension;
-use crate::terrain_material::TERRAIN_SHADER_HANDLE;
-use crate::terrain_material::TOON_LIGHTING_SHADER_HANDLE;
+use crate::terrain_material::{TERRAIN_SHADER_HANDLE,TOON_LIGHTING_SHADER_HANDLE,CUSTOM_PBR_FUNCTIONS_SHADER_HANDLE};
+ 
 use terrain_material::{update_toon_shader, TerrainMaterial, ToonShaderSun};
 
 use edit::{
@@ -70,6 +70,16 @@ impl Plugin for TerrainMeshPlugin {
 
 
 
+          load_internal_asset!(
+            app,
+            CUSTOM_PBR_FUNCTIONS_SHADER_HANDLE,
+            "shaders/custom_pbr_functions.wgsl",
+            Shader::from_wgsl
+        );
+
+
+
+
         // load terrain shader into cache
         load_internal_asset!(
             app,
@@ -79,6 +89,7 @@ impl Plugin for TerrainMeshPlugin {
         );
 
          embedded_asset!(app, "src/", "shaders/hsv_noise.png" );
+       
 
 
         
