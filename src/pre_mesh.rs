@@ -291,6 +291,7 @@ fn compute_smooth_normals(&self) -> Vec<[f32; 3]> {
 
 
 // build tile recursively with adaptive tesselation 
+
 fn refine_tile(
     premesh: &mut Self,
     height_data: &HeightMapU16,
@@ -301,40 +302,26 @@ fn refine_tile(
     step_size: usize,
     lod_level: u8,
     height_scale: f32,
-     threshold: f32, // not used rn 
+    threshold: f32, // not used rn
     max_recursion: u8,
     recursion_level: u8,
-
     lb: f32,
     lf: f32,
     rb: f32,
     rf: f32,
-
 ) {
-    
-
-
-
     let fx = x as f32;
     let fz = z as f32;
 
-
-    // Check if flat
-    
-
+    // Check if the section is flat
     let max_height = lb.max(lf).max(rb).max(rf);
     let min_height = lb.min(lf).min(rb).min(rf);
     let mut flat_section = (max_height - min_height) < threshold;
 
-
-  
-// ----
-   let mut chunk_edge_cardinality: Option<CardinalDirection> = None;
+    // Detect if the tile is at a chunk edge and fetch neighbor LOD
+    let mut chunk_edge_cardinality: Option<CardinalDirection> = None;
     let mut neighbor_lod: Option<u8> = None;
-    // x + is east 
-     // z + is south 
 
-    // Detect if tile is at the edge of the chunk and determine neighbor's LOD
     if x == 0 {
         chunk_edge_cardinality = Some(CardinalDirection::West);
     } else if x == (texture_dimensions[0] as usize - 1) {
@@ -347,23 +334,9 @@ fn refine_tile(
         chunk_edge_cardinality = Some(CardinalDirection::South);
     }
 
-    // If we detected an edge, check the LOD of the adjacent chunk
     if let Some(direction) = &chunk_edge_cardinality {
         neighbor_lod = adjacent_chunk_lods.get(direction).cloned();
     }
-
-// -----
- 
-
-  /*  let neighbor_recursion_amount = neighbor_lod.map( |x| Self::get_recursion_amount( x ) );
-
-
-      let   local_max_recursion = neighbor_recursion_amount.unwrap_or(  max_recursion ); 
-
-      if neighbor_recursion_amount.is_some() {
-        flat_section = false ;
-      }*/
-
 
     // Adjust recursion depth for LOD stitching
     let neighbor_recursion_amount = neighbor_lod.map(Self::get_recursion_amount);
@@ -375,210 +348,79 @@ fn refine_tile(
 
     let should_build_tile = flat_section || recursion_level >= local_max_recursion;
 
+    if should_build_tile {
+        let use_extreme_resolution = recursion_level == max_recursion;
 
+        if use_extreme_resolution {
+            // More vertices for better transition
+            let step_half = step_size as f32 / 2.0;
 
- 
+            let center = (lb + lf + rb + rf) / 4.0;
+            let left_mid = (lb + lf) / 2.0;
+            let right_mid = (rb + rf) / 2.0;
+            let forward_mid = (lf + rf) / 2.0;
+            let back_mid = (lb + rb) / 2.0;
 
-        //we always perform recursion to max UNLESS we are not along an edge and we are in a flat section. They we may quit early
-        //if we are on an edge, always need to go max recursion for proper stitching (simplistic) 
-  if  should_build_tile { // ( !along_chunk_edge && flat_section ) || recursion_level >= local_max_recursion {
+            let uv_lb = compute_uv(fx, fz, texture_dimensions);
+            let uv_rb = compute_uv(fx + step_size as f32, fz, texture_dimensions);
+            let uv_rf = compute_uv(fx + step_size as f32, fz + step_size as f32, texture_dimensions);
+            let uv_lf = compute_uv(fx, fz + step_size as f32, texture_dimensions);
+            let uv_center = compute_uv(fx + step_half, fz + step_half, texture_dimensions);
 
+            let left_back = [fx, lb * height_scale, fz];
+            let right_back = [fx + step_size as f32, rb * height_scale, fz];
+            let right_front = [fx + step_size as f32, rf * height_scale, fz + step_size as f32];
+            let left_front = [fx, lf * height_scale, fz + step_size as f32];
+            let center_pos = [fx + step_half, center * height_scale, fz + step_half];
 
-            //if we are maxed out , lets push it even harder with linear interpolation 
-              let use_extreme_resolution =   recursion_level == max_recursion ;
+            premesh.add_triangle([left_back, left_front, center_pos], [uv_lb, uv_lf, uv_center]);
+            premesh.add_triangle([left_front, right_front, center_pos], [uv_lf, uv_rf, uv_center]);
+            premesh.add_triangle([right_front, right_back, center_pos], [uv_rf, uv_rb, uv_center]);
+            premesh.add_triangle([right_back, left_back, center_pos], [uv_rb, uv_lb, uv_center]);
 
-                if use_extreme_resolution {
+        } else {
+            // Render flat tile early
+            let uv_lb = compute_uv(fx, fz, texture_dimensions);
+            let uv_rb = compute_uv(fx + step_size as f32, fz, texture_dimensions);
+            let uv_rf = compute_uv(fx + step_size as f32, fz + step_size as f32, texture_dimensions);
+            let uv_lf = compute_uv(fx, fz + step_size as f32, texture_dimensions);
 
-                    // Calculate midpoints
-                    let step_half = step_size as f32 / 2.0;
+            let lb_scaled = lb * height_scale;
+            let rb_scaled = rb * height_scale;
+            let rf_scaled = rf * height_scale;
+            let lf_scaled = lf * height_scale;
 
-                    let center = (lb + lf + rb + rf) / 4.0;
-                    let left_mid = (lb + lf) / 2.0;
-                    let right_mid = (rb + rf) / 2.0;
-                    let top_mid = (lf + rf) / 2.0;
-                    let bottom_mid = (lb + rb) / 2.0;
+            let left_back = [fx, lb_scaled, fz];
+            let right_back = [fx + step_size as f32, rb_scaled, fz];
+            let right_front = [fx + step_size as f32, rf_scaled, fz + step_size as f32];
+            let left_front = [fx, lf_scaled, fz + step_size as f32];
 
-                    // Compute UVs
-                    let uv_lb = compute_uv(fx, fz, texture_dimensions);
-                    let uv_rb = compute_uv(fx + step_size as f32, fz, texture_dimensions);
-                    let uv_rf = compute_uv(fx + step_size as f32, fz + step_size as f32, texture_dimensions);
-                    let uv_lf = compute_uv(fx, fz + step_size as f32, texture_dimensions);
-                    let uv_center = compute_uv(fx + step_half, fz + step_half, texture_dimensions);
-                    let uv_left_mid = compute_uv(fx, fz + step_half, texture_dimensions);
-                    let uv_right_mid = compute_uv(fx + step_size as f32, fz + step_half, texture_dimensions);
-                    let uv_top_mid = compute_uv(fx + step_half, fz + step_size as f32, texture_dimensions);
-                    let uv_bottom_mid = compute_uv(fx + step_half, fz, texture_dimensions);
+            premesh.add_triangle([left_front, right_back, left_back], [uv_lf, uv_rb, uv_lb]);
+            premesh.add_triangle([right_front, right_back, left_front], [uv_rf, uv_rb, uv_lf]);
+        }
+    } else {
+        // Recursive subdivision for adaptive tessellation
+        let half_step = step_size / 2;
 
-                    // Define positions
-                    let left_back = [fx, lb  * height_scale , fz];
-                    let right_back = [fx + step_size as f32, rb * height_scale , fz];
-                    let right_front = [fx + step_size as f32, rf * height_scale, fz + step_size as f32];
-                    let left_front = [fx, lf * height_scale, fz + step_size as f32];
-                    let center_pos = [fx + step_half, center * height_scale, fz + step_half];
-                    let left_mid_pos = [fx, left_mid * height_scale, fz + step_half];
-                    let right_mid_pos = [fx + step_size as f32, right_mid * height_scale, fz + step_half];
-                    let top_mid_pos = [fx + step_half, top_mid * height_scale, fz + step_size as f32];
-                    let bottom_mid_pos = [fx + step_half, bottom_mid * height_scale, fz];
-
-                    // Add triangles
-                    premesh.add_triangle([left_back, left_mid_pos, center_pos], [uv_lb, uv_left_mid, uv_center]);
-                    premesh.add_triangle([left_mid_pos, left_front, center_pos], [uv_left_mid, uv_lf, uv_center]);
-                    premesh.add_triangle([left_front, top_mid_pos, center_pos], [uv_lf, uv_top_mid, uv_center]);
-                    premesh.add_triangle([top_mid_pos, right_front, center_pos], [uv_top_mid, uv_rf, uv_center]);
-                    premesh.add_triangle([right_front, right_mid_pos, center_pos], [uv_rf, uv_right_mid, uv_center]);
-                    premesh.add_triangle([right_mid_pos, right_back, center_pos], [uv_right_mid, uv_rb, uv_center]);
-                    premesh.add_triangle([right_back, bottom_mid_pos, center_pos], [uv_rb, uv_bottom_mid, uv_center]);
-                    premesh.add_triangle([bottom_mid_pos, left_back, center_pos], [uv_bottom_mid, uv_lb, uv_center]);
-                }else {
-
-
-                        // Render flat tile early
-                    let uv_lb = compute_uv(fx, fz, texture_dimensions);
-                    let uv_rb = compute_uv(fx + step_size as f32, fz, texture_dimensions);
-                    let uv_rf = compute_uv(fx + step_size as f32, fz + step_size as f32, texture_dimensions);
-                    let uv_lf = compute_uv(fx, fz + step_size as f32, texture_dimensions);
-
-                    let lb_scaled = lb * height_scale;
-                    let rb_scaled = rb * height_scale;
-                    let rf_scaled = rf * height_scale;
-                    let lf_scaled = lf * height_scale;
-
-                    let left_back = [fx, lb_scaled, fz];
-                    let right_back = [fx + step_size as f32, rb_scaled, fz];
-                    let right_front = [fx + step_size as f32, rf_scaled, fz + step_size as f32];
-                    let left_front = [fx, lf_scaled, fz + step_size as f32];
-
-                    premesh.add_triangle([left_front, right_back, left_back], [uv_lf, uv_rb, uv_lb]);
-                    premesh.add_triangle([right_front, right_back, left_front], [uv_rf, uv_rb, uv_lf]);
-
-
-
-                }
-
- 
-
-
-} else {
-    // Subdivide non-flat tile
-    let half_step = step_size / 2;
-
-
-   // let center = (lb + lf + rb + rf) / 4.0;
-   // let left_mid = (lb + lf) / 2.0;
-   // let right_mid = (rb + rf) / 2.0;
-    //let forward_mid = (lf + rf) / 2.0;
-   // let back_mid = (lb + rb) / 2.0;
-
-
-      // Sample heights from the actual height map 
-         
         let center_sampled = height_data[z + half_step][x + half_step] as f32;
         let left_mid_sampled = height_data[z + half_step][x] as f32;
         let right_mid_sampled = height_data[z + half_step][x + step_size] as f32;
         let forward_mid_sampled = height_data[z + step_size][x + half_step] as f32;
         let back_mid_sampled = height_data[z][x + half_step] as f32;
 
-        // Interpolated heights
-        let center_interpolated = (lb + lf + rb + rf) / 4.0;
-        let left_mid_interpolated = (lb + lf) / 2.0;
-        let right_mid_interpolated = (rb + rf) / 2.0;
-        let forward_mid_interpolated = (lf + rf) / 2.0;
-        let back_mid_interpolated = (lb + rb) / 2.0;
+        let center = (lb + lf + rb + rf) / 4.0;
+        let left_mid = (lb + lf) / 2.0;
+        let right_mid = (rb + rf) / 2.0;
+        let forward_mid = (lf + rf) / 2.0;
+        let back_mid = (lb + rb) / 2.0;
 
-        // Mix sampled and interpolated heights
-        let mix_factor = 0.5; // Adjust this factor to control blending SMOOOTHING 
-
-        let center = mix_factor * center_sampled + (1.0 - mix_factor) * center_interpolated;
-        let left_mid = mix_factor * left_mid_sampled + (1.0 - mix_factor) * left_mid_interpolated;
-        let right_mid = mix_factor * right_mid_sampled + (1.0 - mix_factor) * right_mid_interpolated;
-        let forward_mid = mix_factor * forward_mid_sampled + (1.0 - mix_factor) * forward_mid_interpolated;
-        let back_mid = mix_factor * back_mid_sampled + (1.0 - mix_factor) * back_mid_interpolated;
-
-
-
-
-
-  /*  println!(
-    "Tile ({}, {}), level {}: center={}, left_mid={}, right_mid={}, top_mid={}, bottom_mid={}",
-    x, z, recursion_level, center, left_mid, right_mid, forward_mid, back_mid
-);*/
-
-    // Recursive refinement
-    Self::refine_tile(
-        premesh,
-        height_data,
-        adjacent_chunk_lods,
-        texture_dimensions,
-        x,
-        z,
-        half_step,
-        lod_level,
-        height_scale,
-        threshold,
-        max_recursion,
-        recursion_level + 1,
-        lb,
-        left_mid,
-        back_mid,
-        center,
-    );
-    Self::refine_tile(
-        premesh,
-        height_data,
-         adjacent_chunk_lods,
-        texture_dimensions,
-        x + half_step,
-        z,
-        half_step,
-        lod_level,
-        height_scale,
-        threshold,
-        max_recursion,
-        recursion_level + 1,
-        back_mid,
-        center,
-        rb,
-        right_mid,
-    );
-    Self::refine_tile(
-        premesh,
-        height_data,
-         adjacent_chunk_lods,
-        texture_dimensions,
-        x,
-        z + half_step,
-        half_step,
-        lod_level,
-        height_scale,
-        threshold,
-        max_recursion,
-        recursion_level + 1,
-        left_mid,
-        lf,
-        center,
-        forward_mid,
-    );
-    Self::refine_tile(
-        premesh,
-        height_data,
-         adjacent_chunk_lods,
-        texture_dimensions,
-        x + half_step,
-        z + half_step,
-        half_step,
-        lod_level,
-        height_scale,
-        threshold,
-        max_recursion,
-        recursion_level + 1,
-        center,
-        forward_mid,
-        right_mid,
-        rf,
-    );
+        Self::refine_tile(premesh, height_data, adjacent_chunk_lods, texture_dimensions, x, z, half_step, lod_level, height_scale, threshold, max_recursion, recursion_level + 1, lb, left_mid, back_mid, center);
+        Self::refine_tile(premesh, height_data, adjacent_chunk_lods, texture_dimensions, x + half_step, z, half_step, lod_level, height_scale, threshold, max_recursion, recursion_level + 1, back_mid, center, rb, right_mid);
+        Self::refine_tile(premesh, height_data, adjacent_chunk_lods, texture_dimensions, x, z + half_step, half_step, lod_level, height_scale, threshold, max_recursion, recursion_level + 1, left_mid, lf, center, forward_mid);
+        Self::refine_tile(premesh, height_data, adjacent_chunk_lods, texture_dimensions, x + half_step, z + half_step, half_step, lod_level, height_scale, threshold, max_recursion, recursion_level + 1, center, forward_mid, right_mid, rf);
+    }
 }
 
-}
 
 
 
