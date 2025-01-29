@@ -10,6 +10,9 @@ use bevy::render::render_resource::PrimitiveTopology::TriangleList;
    using INFO or WARN in here will cause a segfault since it is in an async thread 
  */
 
+
+  const MAX_RECURSION_AT_HIGHEST_LOD: u8  = 3;
+
 const THRESHOLD: u16 = (0.0001 * 65535.0) as u16;
 
 pub struct PreMesh {
@@ -210,12 +213,12 @@ fn compute_smooth_normals(&self) -> Vec<[f32; 3]> {
           let threshold =  THRESHOLD as f32; // Adjust based on desired flatness sensitivity
 
 
-            let max_recursion_at_highest_lod  = 3;
-             let max_recursion = (max_recursion_at_highest_lod - lod_level ).clamp( 0, 3 )  ; // Limit recursion depth to prevent over-tessellation
+          
+             let max_recursion = (MAX_RECURSION_AT_HIGHEST_LOD - lod_level ).clamp( 0, 3 )  ; // Limit recursion depth to prevent over-tessellation
 
              println!("max_recursion {}", max_recursion);
 
-             let step_size = 1 << max_recursion_at_highest_lod ; 
+             let step_size = 1 << MAX_RECURSION_AT_HIGHEST_LOD ;   //base step size is static for true adaptive meshing 
 
         //there is a weird bug where there are gaps in betweeen each chunk ...
         for x in (0..(tex_dim_x as usize - step_size) as usize).step_by(step_size) {
@@ -281,7 +284,7 @@ fn refine_tile(
     max_recursion: u8,
     recursion_level: u8,
 
-      lb: f32,
+    lb: f32,
     lf: f32,
     rb: f32,
     rf: f32,
@@ -303,12 +306,27 @@ fn refine_tile(
     let flat_section = (max_height - min_height) < threshold;
 
 
+
+    let along_chunk_edge = x <= 0 || z <= 0
+       ||  x >= texture_dimensions[0] as usize - step_size
+       ||  z >= texture_dimensions[1] as usize -  step_size  ;
+
     
-  if flat_section || recursion_level >= max_recursion{
+
+
+    let should_build_tile = match along_chunk_edge {  
+        true => recursion_level == MAX_RECURSION_AT_HIGHEST_LOD, 
+        false =>    flat_section || recursion_level >= max_recursion   
+    };
+
+
+        //we always perform recursion to max UNLESS we are not along an edge and we are in a flat section. They we may quit early
+        //if we are on an edge, always need to go max recursion for proper stitching (simplistic) 
+  if  should_build_tile { // ( !along_chunk_edge && flat_section ) || recursion_level >= local_max_recursion {
 
 
             //if we are maxed out , lets push it even harder with linear interpolation 
-              let use_extreme_resolution = recursion_level == max_recursion ;
+              let use_extreme_resolution =   recursion_level == max_recursion ;
 
                 if use_extreme_resolution {
 
