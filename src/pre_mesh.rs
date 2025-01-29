@@ -306,7 +306,7 @@ fn refine_tile(
     let flat_section = (max_height - min_height) < threshold;
 
 
-
+/*
     let along_chunk_edge = x <= 0 || z <= 0
        ||  x >= texture_dimensions[0] as usize - step_size
        ||  z >= texture_dimensions[1] as usize -  step_size  ;
@@ -314,11 +314,21 @@ fn refine_tile(
     
 
 
+       let distance_from_edge = x.min(z)
+    .min((texture_dimensions[0] as usize - step_size - x))
+    .min((texture_dimensions[1] as usize - step_size - z));
+
+    // Gradually increase recursion near edges
+    let local_max_recursion = MAX_RECURSION_AT_HIGHEST_LOD.saturating_sub(distance_from_edge as u8);
+
+
     let should_build_tile = match along_chunk_edge {  
         true => recursion_level == MAX_RECURSION_AT_HIGHEST_LOD, 
         false =>    flat_section || recursion_level >= max_recursion   
     };
+*/
 
+       let should_build_tile =  flat_section || recursion_level >= max_recursion    ; 
 
         //we always perform recursion to max UNLESS we are not along an edge and we are in a flat section. They we may quit early
         //if we are on an edge, always need to go max recursion for proper stitching (simplistic) 
