@@ -1,4 +1,7 @@
  
+use crate::chunk::CardinalDirection;
+use bevy::utils::HashMap ;
+
 use bevy::prelude::Vec3;
 use crate::heightmap::HeightMapU16;
 use bevy::prelude::{Mesh, Vec2};
@@ -171,6 +174,13 @@ fn compute_smooth_normals(&self) -> Vec<[f32; 3]> {
         mesh   //doesnt work !? 
     }
 
+
+    fn get_recursion_amount( lod_level: u8 ) -> u8 {
+
+         (MAX_RECURSION_AT_HIGHEST_LOD - lod_level ).clamp( 0, 3 ) 
+
+    }
+
     /*
 
     Could improve this so that NO MATTER WHAT lod level, the edges are never decimated at all and always full resolution.  Only decimate the middle. (interim fix for stitching) .
@@ -183,6 +193,8 @@ fn compute_smooth_normals(&self) -> Vec<[f32; 3]> {
         lod_level: u8, // 0 is full quality, higher levels decimate the mesh
 
         texture_dimensions: [f32; 2],
+
+         adjacent_chunk_lods: HashMap<CardinalDirection, u8>
     ) -> Self {
         let mut premesh = Self::new();
 
@@ -204,7 +216,8 @@ fn compute_smooth_normals(&self) -> Vec<[f32; 3]> {
         let tex_dim_x = texture_dimensions.get(0).unwrap().clone();
         let tex_dim_y = texture_dimensions.get(1).unwrap().clone();
 
-       // let width_scale = 1.0;
+
+
 
         //tris completely below this will be skipped
        // let scaled_min_threshold = (THRESHOLD as f32) * height_scale;
@@ -214,11 +227,17 @@ fn compute_smooth_normals(&self) -> Vec<[f32; 3]> {
 
 
           
-             let max_recursion = (MAX_RECURSION_AT_HIGHEST_LOD - lod_level ).clamp( 0, 3 )  ; // Limit recursion depth to prevent over-tessellation
+             let max_recursion = Self::get_recursion_amount( lod_level ) ; // Limit recursion depth to prevent over-tessellation
 
              println!("max_recursion {}", max_recursion);
 
              let step_size = 1 << MAX_RECURSION_AT_HIGHEST_LOD ;   //base step size is static for true adaptive meshing 
+
+
+
+             // if we arae on an edge, figure out the cardinality of that edge  and ALSO  figure out the LOD of the chunk in that direction 
+
+
 
         //there is a weird bug where there are gaps in betweeen each chunk ...
         for x in (0..(tex_dim_x as usize - step_size) as usize).step_by(step_size) {
@@ -243,6 +262,7 @@ fn compute_smooth_normals(&self) -> Vec<[f32; 3]> {
             Self::refine_tile(
                 &mut premesh,
                  sub_heightmap,
+                 &adjacent_chunk_lods,
                 texture_dimensions,
                 x,
                 z,
@@ -274,6 +294,7 @@ fn compute_smooth_normals(&self) -> Vec<[f32; 3]> {
 fn refine_tile(
     premesh: &mut Self,
     height_data: &HeightMapU16,
+    adjacent_chunk_lods: &HashMap<CardinalDirection, u8>,
     texture_dimensions: [f32; 2],
     x: usize,
     z: usize,
@@ -303,32 +324,60 @@ fn refine_tile(
 
     let max_height = lb.max(lf).max(rb).max(rf);
     let min_height = lb.min(lf).min(rb).min(rf);
-    let flat_section = (max_height - min_height) < threshold;
+    let mut flat_section = (max_height - min_height) < threshold;
 
 
-/*
-    let along_chunk_edge = x <= 0 || z <= 0
-       ||  x >= texture_dimensions[0] as usize - step_size
-       ||  z >= texture_dimensions[1] as usize -  step_size  ;
+  
+// ----
+   let mut chunk_edge_cardinality: Option<CardinalDirection> = None;
+    let mut neighbor_lod: Option<u8> = None;
+    // x + is east 
+     // z + is south 
 
-    
+    // Detect if tile is at the edge of the chunk and determine neighbor's LOD
+    if x == 0 {
+        chunk_edge_cardinality = Some(CardinalDirection::West);
+    } else if x == (texture_dimensions[0] as usize - 1) {
+        chunk_edge_cardinality = Some(CardinalDirection::East);
+    }
+
+    if z == 0 {
+        chunk_edge_cardinality = Some(CardinalDirection::North);
+    } else if z == (texture_dimensions[1] as usize - 1) {
+        chunk_edge_cardinality = Some(CardinalDirection::South);
+    }
+
+    // If we detected an edge, check the LOD of the adjacent chunk
+    if let Some(direction) = &chunk_edge_cardinality {
+        neighbor_lod = adjacent_chunk_lods.get(direction).cloned();
+    }
+
+// -----
+ 
+
+  /*  let neighbor_recursion_amount = neighbor_lod.map( |x| Self::get_recursion_amount( x ) );
 
 
-       let distance_from_edge = x.min(z)
-    .min((texture_dimensions[0] as usize - step_size - x))
-    .min((texture_dimensions[1] as usize - step_size - z));
+      let   local_max_recursion = neighbor_recursion_amount.unwrap_or(  max_recursion ); 
 
-    // Gradually increase recursion near edges
-    let local_max_recursion = MAX_RECURSION_AT_HIGHEST_LOD.saturating_sub(distance_from_edge as u8);
+      if neighbor_recursion_amount.is_some() {
+        flat_section = false ;
+      }*/
 
 
-    let should_build_tile = match along_chunk_edge {  
-        true => recursion_level == MAX_RECURSION_AT_HIGHEST_LOD, 
-        false =>    flat_section || recursion_level >= max_recursion   
-    };
-*/
+    // Adjust recursion depth for LOD stitching
+    let neighbor_recursion_amount = neighbor_lod.map(Self::get_recursion_amount);
+    let local_max_recursion = neighbor_recursion_amount.unwrap_or(max_recursion);
 
-       let should_build_tile =  flat_section || recursion_level >= max_recursion    ; 
+    if neighbor_recursion_amount.is_some() {
+        flat_section = false; // Force refinement at chunk edges to ensure proper stitching
+    }
+
+    let should_build_tile = flat_section || recursion_level >= local_max_recursion;
+
+
+
+ 
 
         //we always perform recursion to max UNLESS we are not along an edge and we are in a flat section. They we may quit early
         //if we are on an edge, always need to go max recursion for proper stitching (simplistic) 
@@ -458,6 +507,7 @@ fn refine_tile(
     Self::refine_tile(
         premesh,
         height_data,
+        adjacent_chunk_lods,
         texture_dimensions,
         x,
         z,
@@ -475,6 +525,7 @@ fn refine_tile(
     Self::refine_tile(
         premesh,
         height_data,
+         adjacent_chunk_lods,
         texture_dimensions,
         x + half_step,
         z,
@@ -492,6 +543,7 @@ fn refine_tile(
     Self::refine_tile(
         premesh,
         height_data,
+         adjacent_chunk_lods,
         texture_dimensions,
         x,
         z + half_step,
@@ -509,6 +561,7 @@ fn refine_tile(
     Self::refine_tile(
         premesh,
         height_data,
+         adjacent_chunk_lods,
         texture_dimensions,
         x + half_step,
         z + half_step,
@@ -586,6 +639,8 @@ fn bilinear_interpolate(
         lod_level: u8, // 0 is full quality, higher levels decimate the mesh
 
         texture_dimensions: [f32; 2],
+
+        chunk_lod_map: HashMap<CardinalDirection, u8>,
     ) -> Self {
         let mut premesh = Self::new();
 

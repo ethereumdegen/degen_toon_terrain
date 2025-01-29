@@ -1,5 +1,9 @@
+use crate::chunk::ChunkLodResource;
+use crate::chunk::CardinalDirection;
 use crate::splat::SplatMapDataUpdated;
 use crate::splat::save_chunk_splat_map_to_disk; 
+
+use bevy::utils::HashMap ;
  
 use crate::heightmap::HeightMap;
 use crate::splat::ChunkSplatDataRaw;
@@ -121,7 +125,10 @@ pub fn apply_command_events(
     terrain_query: Query<(&TerrainData, &TerrainConfig)>,
 
     chunk_mesh_query: Query<(Entity, &Mesh3d , &GlobalTransform), With<TerrainChunkMesh>>,
-    meshes: Res<Assets<Mesh>>,
+    meshes: Res<Assets<Mesh>>,  
+
+
+        chunk_lod_resource: Res<ChunkLodResource>,
 
     mut ev_reader: EventReader<TerrainCommandEvent>,
 ) {
@@ -221,25 +228,42 @@ pub fn apply_command_events(
                                     terrain_dimensions.y / chunk_rows as f32 + 1.0,
                                 ];
 
-                                let mesh = match use_greedy_mesh {
-                                    true => PreMesh::from_heightmap_subsection_greedy(
-                                        &sub_heightmap,
-                                        height_scale,
-                                        lod_level,
-                                        sub_texture_dim,
-                                    ),
 
-                                    false => PreMesh::from_heightmap_subsection(
-                                        &sub_heightmap,
-                                        height_scale,
-                                        lod_level,
-                                        sub_texture_dim,
-                                    ),
-                                }
-                                .build();
+
+
+                                
 
                                 #[cfg(feature = "physics")]
                                 {
+
+
+
+
+
+                                        let adjacent_chunk_lods: HashMap<CardinalDirection, u8> = chunk_lod_resource.get_adjacent_chunk_lods (  chunk.chunk_id , chunk_rows ); 
+
+                                        let mesh = match use_greedy_mesh {
+                                            true => PreMesh::from_heightmap_subsection_greedy(
+                                                &sub_heightmap,
+                                                height_scale,
+                                                lod_level,
+                                                sub_texture_dim,
+                                                adjacent_chunk_lods
+                                            ),
+
+                                            false => PreMesh::from_heightmap_subsection(
+                                                &sub_heightmap,
+                                                height_scale,
+                                                lod_level,
+                                                sub_texture_dim,
+                                                adjacent_chunk_lods
+                                            ),
+                                        }
+                                        .build();
+                                        
+
+
+
                                    let collider = Collider::trimesh_from_mesh(&mesh)
                                         .expect("Failed to create collider from mesh");
 

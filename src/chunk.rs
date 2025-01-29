@@ -39,9 +39,13 @@ pub fn chunks_plugin(app: &mut App){
     let task_update_rate = Duration::from_millis(250);
 
     app
-    .insert_resource(ChunkHeightMapResource::default()) 
-    //.insert_resource(ChunkSplatMapResource::default())
-    .insert_resource(ChunkMeshBuildTaskCounterResource::default())
+    
+
+    .init_resource::<ChunkHeightMapResource>( )
+     .init_resource::<ChunkMeshBuildTaskCounterResource>( )
+      .init_resource::<ChunkLodResource>( )
+
+  
 
     .register_type::<RenderChunkAtLod>()
 
@@ -136,6 +140,95 @@ pub struct ChunkHeightMapResource {
 pub struct ChunkMeshBuildTaskCounterResource {
     pub active_build_tasks:usize  
 }
+
+
+#[derive(Resource, Default)]
+pub struct ChunkLodResource {
+
+    //chunk id ->  chunk lod 
+    pub all_chunk_lods: HashMap< u32, u8 >
+
+}
+
+impl ChunkLodResource {
+
+ 
+
+      pub fn get_adjacent_chunk_lods(&self, chunk_id: u32, chunk_rows: u32) -> HashMap<CardinalDirection, u8> {
+        let mut adjacent_lods = HashMap::new();
+        let chunk_coords = ChunkCoords::from_chunk_id(chunk_id, chunk_rows);
+
+
+        let cardinal_directions = CardinalDirection::all_directions();
+ 
+
+        for (dir, [dx, dy]) in cardinal_directions.iter().map ( |d|  ( d,  d.get_offset() ) ) {
+            let new_x = chunk_coords.x() as i32 + dx;
+            let new_y = chunk_coords.y() as i32 + dy;
+
+            if new_x >= 0 && new_y >= 0 && new_x < chunk_rows as i32 && new_y < chunk_rows as i32 {
+                let neighbor_chunk_id = ChunkCoords::new(new_x as u32, new_y as u32).get_chunk_index(chunk_rows);
+                if let Some(&lod) = self.all_chunk_lods.get(&neighbor_chunk_id) {
+                    adjacent_lods.insert(dir.clone(), lod);
+                }
+            }
+        }
+
+        adjacent_lods
+    
+
+
+
+    }
+}
+
+
+/*
+#[derive(Component, Default)]
+pub struct AdjacentChunkLodData {
+    pub adjacent_chunk_lods: HashMap< CardinalDirection, u8  >
+}
+*/
+
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone )]
+pub enum CardinalDirection {
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+    NorthWest
+}
+impl CardinalDirection {
+    pub fn all_directions() -> Vec<Self> {
+        vec![
+            CardinalDirection::North,
+            CardinalDirection::NorthEast,
+            CardinalDirection::East,
+            CardinalDirection::SouthEast,
+            CardinalDirection::South,
+            CardinalDirection::SouthWest,
+            CardinalDirection::West,
+            CardinalDirection::NorthWest,
+        ]
+    }
+
+    pub fn get_offset(&self) -> [i32; 2] {
+        match self {
+            CardinalDirection::North => [0, -1],
+            CardinalDirection::NorthEast => [1, -1],
+            CardinalDirection::East => [1, 0],
+            CardinalDirection::SouthEast => [1, 1],
+            CardinalDirection::South => [0, 1],
+            CardinalDirection::SouthWest => [-1, 1],
+            CardinalDirection::West => [-1, 0],
+            CardinalDirection::NorthWest => [-1, -1],
+        }
+    }
+}
+
 
 
 
@@ -687,7 +780,7 @@ pub fn update_splat_image_formats(
 
 pub fn add_render_chunk_at_lod_component(
         mut commands: Commands,
-        chunk_query: Query<Entity, With<Chunk>>,
+        chunk_query: Query<(Entity, &Chunk), With<Chunk>>,
         terrain_viewer: Query<Entity, With<TerrainViewer>>,
 
         parent_query: Query<&Parent>,
@@ -695,7 +788,10 @@ pub fn add_render_chunk_at_lod_component(
         terrain_query: Query<(&TerrainData, &TerrainConfig)>,
  
 
-        global_transform_query: Query<&GlobalTransform> 
+        global_transform_query: Query<&GlobalTransform> ,
+
+
+       mut  chunk_lod_resource: ResMut<ChunkLodResource>
 
 
 ){
@@ -703,7 +799,10 @@ pub fn add_render_chunk_at_lod_component(
     let  terrain_viewer_entity  = terrain_viewer.get_single().ok() ;
 
 
-    for  chunk_entity in chunk_query.iter(){
+    for  (chunk_entity, chunk) in chunk_query.iter(){
+
+        let chunk_id = chunk.chunk_id; 
+
         let Some(chunk_parent) = parent_query.get(chunk_entity).ok() else {continue};
 
          let Some((terrain_data,terrain_config)) = terrain_query.get(chunk_parent.get()).ok() else {continue};
@@ -734,6 +833,10 @@ pub fn add_render_chunk_at_lod_component(
       
 
         commands.entity(chunk_entity).try_insert( RenderChunkAtLod(lod_level as u8) );
+
+        chunk_lod_resource.all_chunk_lods.insert( chunk_id  ,  lod_level as u8 ) ;
+
+        // put a command on all adjacent chunks that they need to be re-rendered bc their neighbors LOD changed ?  but THEIR adjacent chunks do not need to be - be sure not to cascade infinite  .
 
     }
 
@@ -984,6 +1087,9 @@ pub fn build_chunk_meshes(
     chunk_height_maps: ResMut<ChunkHeightMapResource>,
 
     mut chunk_mesh_build_task_counter_resource: ResMut<ChunkMeshBuildTaskCounterResource>,
+
+         chunk_lod_resource: Res<ChunkLodResource>
+
    // chunk_build_tasks_query: Query<Entity,With<MeshBuilderTask>>
     // mut chunk_data_query: Query<( &mut ChunkData )>,
 ) {
@@ -1107,6 +1213,8 @@ pub fn build_chunk_meshes(
 
             let use_greedy_mesh = terrain_config.use_greedy_mesh;
 
+            let adjacent_chunk_lods: HashMap<CardinalDirection, u8> = chunk_lod_resource.get_adjacent_chunk_lods (  chunk.chunk_id  , chunk_rows); 
+
             let task = thread_pool.spawn(async move {
                 info!("trying to build premesh");
 
@@ -1116,12 +1224,17 @@ pub fn build_chunk_meshes(
                     terrain_dimensions.y / chunk_rows as f32 + 1.0,
                 ];
 
+
+ 
+             
+
                 let mesh = match use_greedy_mesh {
                     true => PreMesh::from_heightmap_subsection_greedy(
                         &sub_heightmap,
                         height_scale,
                         lod_level,
                         sub_texture_dim,
+                        adjacent_chunk_lods
                     ),
 
                     false => PreMesh::from_heightmap_subsection(
@@ -1129,6 +1242,7 @@ pub fn build_chunk_meshes(
                         height_scale,
                         lod_level,
                         sub_texture_dim,
+                        adjacent_chunk_lods
                     ),
                 }
                 .build();
