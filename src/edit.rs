@@ -263,9 +263,28 @@ pub fn apply_command_events(
                                         
 
 
+                                        //make sure mesh has more than 0 tris 
+                                   let vertices_count =  mesh.count_vertices();
 
-                                   let collider = Collider::trimesh_from_mesh(&mesh)
-                                        .expect("Failed to create collider from mesh");
+                                   if vertices_count < 3 {
+                                         warn!("Could not generate collider 1" );
+                                        continue; 
+                                   }
+
+ 
+
+                                     let Some(collider) = Collider::convex_decomposition_from_mesh(&mesh) else {
+                                            warn!("Could not generate collider 2" );
+                                            continue; 
+                                      };
+
+
+                                      /*
+                                   let Some(collider) = Collider::trimesh_from_mesh(&mesh) else {
+                                            warn!("Could not generate collider 2" );
+                                            continue; 
+                                      };
+                                      */
 
                                     let collider_data_serialized =
                                         bincode::serialize(&collider).unwrap();

@@ -1,6 +1,12 @@
 
 
 
+
+- probably need to store each chunk LOD in a map 
+    - then can use that data when building a chunk to rebuild it .
+
+
+
 - custom apply_pbr_lighting  for cel shading ..  iterative bands of the shadows that come in from the point and direct lighting !  (bands code from the bevy toon shader) 
 
 
