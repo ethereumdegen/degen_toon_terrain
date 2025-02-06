@@ -515,7 +515,11 @@ pub fn apply_tool_edits(
                                                 // Get the original height
                                                 let original_height = height_map_data[y][x] as f32;
 
-                                                let new_height = (height.clone() as i16) - 15000 ;
+                                             //   let new_height : i16 = (height.clone() as i16) - 15000 ;
+
+                                                // Ensure no underflow occurs using saturating subtraction
+                                                 let new_height = height.saturating_sub(15000);
+
 
                                                 // Compute the new height by applying the delta
                                                 let adjusted_delta = new_height as f32 * 0.05 * hardness_multiplier;
