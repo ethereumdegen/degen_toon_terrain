@@ -271,20 +271,20 @@ pub fn apply_command_events(
                                         continue; 
                                    }
 
- 
+                                    
 
-                                     let Some(collider) = Collider::convex_decomposition_from_mesh(&mesh) else {
+                                     /*let Some(collider) = Collider::convex_decomposition_from_mesh(&mesh) else {
                                             warn!("Could not generate collider 2" );
                                             continue; 
-                                      };
+                                      };*/
 
 
-                                      /*
+                                       
                                    let Some(collider) = Collider::trimesh_from_mesh(&mesh) else {
                                             warn!("Could not generate collider 2" );
                                             continue; 
                                       };
-                                      */
+                                      
 
                                     let collider_data_serialized =
                                         bincode::serialize(&collider).unwrap();
