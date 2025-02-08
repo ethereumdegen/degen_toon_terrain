@@ -477,7 +477,27 @@ fn fragment(
 
 
 
-              
+            
+
+
+            // -----------
+
+
+            let secondary_color_from_diffuse = textureSample(base_color_texture, base_color_sampler, tiled_uv, terrain_layer_B_index);
+
+            let secondary_color_from_diffuse_distorted = textureSample(base_color_texture, base_color_sampler, tiled_uv, terrain_layer_B_index_distorted);
+    
+            let secondary_color_strength = f32( terrain_layer_B_strength ) / 255.0;  
+                    // terrain_layer_B_strength_distorted  exists ?? 
+
+            blended_color = mix( blended_color  ,  secondary_color_from_diffuse ,  secondary_color_strength ); 
+
+
+
+            // --------
+
+
+
  
 
 
