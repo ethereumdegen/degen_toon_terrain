@@ -63,11 +63,11 @@ impl ChunkSplatDataRaw {
     ) -> usize {
 
 
-         let layers_count = 4; 
+          let layers_count = 4; 
 
          if layer > layers_count {
             warn!("invalid layer ! {}", layer);
-         }
+         } 
 
          //let width = self.splat_index_map_texture.width();
 
@@ -102,6 +102,11 @@ impl ChunkSplatDataRaw {
          
         let idx = Self::get_pixel_internal_index(x,y,layer,width); 
 
+
+        if idx >= self.splat_map_texture.data.len() {
+            return ;
+        }
+
         self.splat_map_texture.data[idx] = texture_type_index;       
 
     }
@@ -122,6 +127,7 @@ impl ChunkSplatDataRaw {
         let width = self.splat_map_texture.width();
          
         let idx = Self::get_pixel_internal_index(x,y,layer,width); 
+ 
 
          self.splat_map_texture.data[idx]      
 

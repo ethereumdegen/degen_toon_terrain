@@ -263,9 +263,28 @@ pub fn apply_command_events(
                                         
 
 
+                                        //make sure mesh has more than 0 tris 
+                                   let vertices_count =  mesh.count_vertices();
 
-                                   let collider = Collider::trimesh_from_mesh(&mesh)
-                                        .expect("Failed to create collider from mesh");
+                                   if vertices_count < 3 {
+                                         warn!("Could not generate collider 1" );
+                                        continue; 
+                                   }
+
+                                    
+
+                                     /*let Some(collider) = Collider::convex_decomposition_from_mesh(&mesh) else {
+                                            warn!("Could not generate collider 2" );
+                                            continue; 
+                                      };*/
+
+
+                                       
+                                   let Some(collider) = Collider::trimesh_from_mesh(&mesh) else {
+                                            warn!("Could not generate collider 2" );
+                                            continue; 
+                                      };
+                                      
 
                                     let collider_data_serialized =
                                         bincode::serialize(&collider).unwrap();
@@ -496,7 +515,11 @@ pub fn apply_tool_edits(
                                                 // Get the original height
                                                 let original_height = height_map_data[y][x] as f32;
 
-                                                let new_height = (height.clone() as i16) - 15000 ;
+                                             //   let new_height : i16 = (height.clone() as i16) - 15000 ;
+
+                                                // Ensure no underflow occurs using saturating subtraction
+                                                 let new_height = height.saturating_sub(15000);
+
 
                                                 // Compute the new height by applying the delta
                                                 let adjusted_delta = new_height as f32 * 0.05 * hardness_multiplier;
@@ -720,7 +743,26 @@ pub fn apply_tool_edits(
                                                             < pixel_radius
                                                         {
 
-                                                              let   hardness_multiplier =
+                                                      
+
+                                                            for layer_index in 0..3 {
+
+                                                                let new_texture_value = match layer_index {
+
+                                                                    0 => *r as u8,
+                                                                    1 => *g as u8, 
+
+                                                                    2 => *b as u8 ,
+
+                                                                    _ => 0 as u8 
+
+
+                                                                };
+
+
+
+
+                                                                 let   hardness_multiplier =
                                                                 get_hardness_multiplier(
                                                                     tool_coords 
                                                                         .distance(pixel_pos),
@@ -729,45 +771,43 @@ pub fn apply_tool_edits(
                                                                 );
 
 
-                                                            let texture_type_index = *r as u8;
-                                                            let texture_strength = *g as u8; //careful w this on UI ! 
+                                                                let original_value = chunk_splat_data_raw.get_pixel_index_map_data(x, y, layer_index);
 
-                                                            let texture_layer = *b as u8;  //0 to 3 
+                                                                let hardened_value =   apply_hardness_multiplier(
+                                                                    original_value as f32,
+                                                                    new_texture_value as f32,
+                                                                    hardness_multiplier,
+                                                                )
+                                                                    as u8;
 
+                                                                    //hardness is only used for layer 2 ! the 'b' value 
+                                                                let final_value = match layer_index {
+                                                                    2 =>  hardened_value ,
 
-
-
-
-
-                                                            /*
-                                                            let original_strength = chunk_splat_data_raw.get_pixel_index_map_data(
-                                                                x,
-                                                                y,
-                                                                texture_layer,
-                                                           
-                                                            ); 
-
-                                                           let strength_with_hardness = apply_hardness_multiplier(
+                                                                    _ =>  new_texture_value
+                                                                };
 
 
+                                                            //    info!("set_pixel_index_map_data {} {} ", layer_index, final_value );
 
-                                                            original_strength as f32,
-                                                            texture_strength as f32,
+                                                                chunk_splat_data_raw.set_pixel_index_map_data(
+                                                                    x,
+                                                                    y,
+                                                                    layer_index,
+                                                                    final_value,
+                                                                  
+                                                                );
 
-                                                            hardness_multiplier
-
-                                                            );         
-
-                                                         */
-
+                                                            }
+ 
                                                             
-                                                            chunk_splat_data_raw.set_pixel_index_map_data(
+                                                          /*   chunk_splat_data_raw.set_pixel_index_map_data(
                                                                 x,
                                                                 y,
                                                                 texture_layer,
                                                                 texture_type_index,
                                                                // strength_with_hardness as u8 
-                                                            );
+                                                            ); */
 
                                                            /*  chunk_splat_data_raw.set_pixel_index_map_data(
                                                                 x,
@@ -912,7 +952,7 @@ pub fn apply_tool_edits(
                         } // SetSplatMap
 
 
-
+                        // deprecated 
                         EditingTool::SetSplatMapUltra { texture_indices, texture_strengths } => {
 
                           //  todo!("rewrite set splat ");
@@ -1155,7 +1195,7 @@ pub fn apply_tool_edits(
 
 
                                                     let mut texture_indices : [u8 ; 4 ] = [0u8; 4]; 
-                                                    let mut texture_strengths : [u8 ; 4 ]  = [0u8; 4]; 
+                                                    // let mut texture_strengths : [u8 ; 4 ]  = [0u8; 4]; 
 
                                                     for tex_layer in 0..4 {
 

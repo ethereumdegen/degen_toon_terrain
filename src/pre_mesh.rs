@@ -348,6 +348,16 @@ fn refine_tile(
 
     let should_build_tile = flat_section || recursion_level >= local_max_recursion;
 
+
+
+    {
+
+        let center = (lb + lf + rb + rf) / 4.0;
+         if center < 1.1 { return };// do not render totally flat tiles - they are hidden
+
+    }
+
+
     if should_build_tile {
         let use_extreme_resolution = recursion_level == max_recursion;
 
@@ -402,11 +412,11 @@ fn refine_tile(
         // Recursive subdivision for adaptive tessellation
         let half_step = step_size / 2;
 
-        let center_sampled = height_data[z + half_step][x + half_step] as f32;
+    /*    let center_sampled = height_data[z + half_step][x + half_step] as f32;
         let left_mid_sampled = height_data[z + half_step][x] as f32;
         let right_mid_sampled = height_data[z + half_step][x + step_size] as f32;
         let forward_mid_sampled = height_data[z + step_size][x + half_step] as f32;
-        let back_mid_sampled = height_data[z][x + half_step] as f32;
+        let back_mid_sampled = height_data[z][x + half_step] as f32; */
 
         let center = (lb + lf + rb + rf) / 4.0;
         let left_mid = (lb + lf) / 2.0;
@@ -414,6 +424,7 @@ fn refine_tile(
         let forward_mid = (lf + rf) / 2.0;
         let back_mid = (lb + rb) / 2.0;
 
+       
         Self::refine_tile(premesh, height_data, adjacent_chunk_lods, texture_dimensions, x, z, half_step, lod_level, height_scale, threshold, max_recursion, recursion_level + 1, lb, left_mid, back_mid, center);
         Self::refine_tile(premesh, height_data, adjacent_chunk_lods, texture_dimensions, x + half_step, z, half_step, lod_level, height_scale, threshold, max_recursion, recursion_level + 1, back_mid, center, rb, right_mid);
         Self::refine_tile(premesh, height_data, adjacent_chunk_lods, texture_dimensions, x, z + half_step, half_step, lod_level, height_scale, threshold, max_recursion, recursion_level + 1, left_mid, lf, center, forward_mid);
