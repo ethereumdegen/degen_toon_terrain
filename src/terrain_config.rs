@@ -30,6 +30,8 @@ pub struct TerrainConfig {
 
     pub use_greedy_mesh: bool,
 
+    pub greedy_mesh_colliders : bool, 
+
     pub texture_uv_expansion_factor: f32, 
 
     pub texture_image_sections: u32,
@@ -63,6 +65,8 @@ impl Default for TerrainConfig {
 
             use_greedy_mesh: false,
             texture_image_sections: 8,
+
+            greedy_mesh_colliders: false , 
 
             diffuse_texture_path: "diffuse/".into(),
             secondary_diffuse_texture_path: "diffuse/".into(),

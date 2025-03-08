@@ -192,10 +192,6 @@ pub fn apply_command_events(
                                 .expect("No mesh found for terrain chunk");*/
 
 
-                                let lod_level = terrain_config.collider_lod_level;
-
-                               // let lod_level = 1; // can customize lod level of colliders here
-                                let use_greedy_mesh = true;
 
                                 let chunk_rows = terrain_config.chunk_rows;
                                 let terrain_dimensions = terrain_config.terrain_dimensions;
@@ -238,6 +234,10 @@ pub fn apply_command_events(
 
 
 
+                                    let lod_level = terrain_config.collider_lod_level;
+
+                                   // let lod_level = 1; // can customize lod level of colliders here
+                                    let use_greedy_mesh = terrain_config.greedy_mesh_colliders;
 
 
                                         let adjacent_chunk_lods: HashMap<CardinalDirection, u8> = chunk_lod_resource.get_adjacent_chunk_lods (  chunk.chunk_id , chunk_rows ); 
