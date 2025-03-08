@@ -314,10 +314,10 @@ pub struct BuiltChunkMeshData {
 #[derive(Component)]
 pub struct TerrainChunkMesh {}
 
-#[derive(Component)]
-pub struct CachedHeightmapData {
-    pub heightmap_data: Vec<Vec<u16>>,
-}
+//#[derive(Component)]
+//pub struct CachedHeightmapData {
+    //pub heightmap_data: Vec<Vec<u16>>,
+//}
 
 pub trait ChunkCoordinates {
     fn new(x: u32, y: u32) -> Self;
@@ -1185,9 +1185,9 @@ pub fn build_chunk_meshes(
             }
 
             //for now, add the unstitched data..
-            commands.entity(chunk_entity).insert(CachedHeightmapData {
+      /*      commands.entity(chunk_entity).insert(CachedHeightmapData {
                 heightmap_data: height_map_data_ref.to_vec(),
-            });
+            });*/
 
             //these three LOC really take no time at all
  
