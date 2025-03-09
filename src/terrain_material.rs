@@ -64,8 +64,8 @@ impl Default for ToonShaderMaterial {
 #[derive(Asset, AsBindGroup, TypePath, Clone, Debug, Default)]
 pub struct TerrainMaterial {
 
-     #[uniform(18)]
-    pub toon_material: ToonShaderMaterial,
+   //  #[uniform(18)]
+   // pub toon_material: ToonShaderMaterial,
 
 
 
@@ -124,6 +124,12 @@ pub struct TerrainMaterial {
     pub hsv_noise_texture: Option<Handle<Image>>,
 
 
+
+
+    #[texture(100)]
+    #[sampler(101)]
+    pub cel_mask_texture:  Option<Handle<Image>>,
+
     //#[texture(40)]
     //#[sampler(41)]
     //pub shadow_noise_texture: Option<Handle<Image>>,
@@ -147,6 +153,7 @@ impl MaterialExtension for TerrainMaterial {
 
 // ------- 
 
+/*
 #[derive(Component)]
 pub struct ToonShaderSun;
 
@@ -168,4 +175,4 @@ pub fn update_toon_shader(
             terrain_mat.extension.toon_material.ambient_color = light.color.to_srgba().to_vec4();
         }
     }
-}
+}*/

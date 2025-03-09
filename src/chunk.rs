@@ -263,7 +263,7 @@ pub struct ChunkData {
 
     pub hsv_noise_texture: Option<Handle<Image>>,
 
-   
+    pub cel_mask_texture: Option<Handle<Image>> , 
 
     //add to me later.. 
     pub vertex_color_tint_texture: Option<Handle<Image>>,
@@ -501,8 +501,8 @@ pub fn initialize_chunk_data(
 
         let splat_strength_texture_handle: Handle<Image> = asset_server.load(splat_strength_texture_path);
 */
-            
-        
+        let cel_mask_texture = asset_server.load("embedded://degen_toon_terrain/shaders/cel_mask.png");
+
         let hsv_noise_texture = asset_server.load("embedded://degen_toon_terrain/shaders/hsv_noise.png");
 
             //to start off, render at low LOD 
@@ -527,6 +527,8 @@ pub fn initialize_chunk_data(
             vertex_color_tint_texture: None, 
 
             hsv_noise_texture: Some(hsv_noise_texture) , 
+
+            cel_mask_texture: Some( cel_mask_texture ) ,
           
 
             splat_texture_is_loaded: false,
@@ -1378,6 +1380,7 @@ pub fn finish_chunk_build_tasks(
             let height_map_texture = chunk_data.get_height_map_texture_image().clone();
 
             let hsv_noise_texture = chunk_data.hsv_noise_texture.clone(); 
+            let cel_mask_texture = chunk_data.cel_mask_texture.clone(); 
           
 
             let chunk_terrain_material: Handle<TerrainMaterialExtension> =
@@ -1414,6 +1417,7 @@ pub fn finish_chunk_build_tasks(
                     //    splat_strength_map_texture: splat_strength_map_texture, 
 
                         hsv_noise_texture,
+                        cel_mask_texture, 
                        
 
                       //  splat_texture: splat_texture.clone(),

@@ -1,7 +1,7 @@
 use bevy::image::ImageAddressMode;
 use bevy::image::ImageSamplerDescriptor;
 use bevy::image::ImageFilterMode; 
-use degen_toon_terrain::terrain_material::ToonShaderSun;
+ 
 use bevy::pbr::wireframe::WireframeConfig;
 use bevy::render::RenderPlugin;
 use bevy::render::settings::WgpuSettings;
@@ -111,7 +111,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         },
          Transform::from_xyz(4.0, 6.0, 4.0),
-         ToonShaderSun
+       //  ToonShaderSun
          
     ));
     // light

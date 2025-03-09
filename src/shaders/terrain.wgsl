@@ -3,7 +3,7 @@
  
  //https://github.com/nicopap/bevy_mod_paramap/blob/main/src/parallax_map.wgsl
  
- #import degen_toon_terrain::toon_lighting::{calculate_toon_lighting,ToonShaderMaterial}
+ //#import degen_toon_terrain::toon_lighting::{calculate_toon_lighting,ToonShaderMaterial}
 
  #import degen_toon_terrain::stochastic_sampling 
 
@@ -62,7 +62,7 @@ struct ToolPreviewUniforms {
 
 //https://github.com/DGriffin91/bevy_mod_standard_material/blob/main/assets/shaders/pbr.wgsl
 
-
+/*
 @group(1) @binding(1)
 var base_color_texture1: texture_2d<f32>;
 @group(1) @binding(2)
@@ -83,14 +83,15 @@ var metallic_roughness_sampler: sampler;
 var occlusion_texture: texture_2d<f32>;
 @group(1) @binding(8)
 var occlusion_sampler: sampler;
+*/
+
+@group(2) @binding(100) var cel_mask: texture_2d<f32>;
+@group(2) @binding(101) var cel_mask_sampler: sampler;
 
 
 
-
-
-
-@group(2) @binding(18)
-var<uniform> toon_material: ToonShaderMaterial;
+//@group(2) @binding(18)
+//var<uniform> toon_material: ToonShaderMaterial;
 
 
 
@@ -629,23 +630,9 @@ fn fragment(
 
     pbr_input.V =  calculate_view(mesh.world_position, pbr_input.is_orthographic);
 
-
-   
-
-
-
-   
-    
+  
     // apply lighting
-    
-    // we can optionally modify the lit color before post-processing is applied
-    // out.color = out.color;
-    // apply in-shader post processing (fog, alpha-premultiply, and also tonemapping, debanding if the camera is non-hdr)
-    // note this does not include fullscreen postprocessing effects like bloom.
-    pbr_out.color = main_pass_post_lighting_processing(pbr_input, pbr_out.color);
-
-    pbr_out.color=  tone_mapping(pbr_out.color, view.color_grading);
-
+  
 
 
    */
@@ -653,59 +640,44 @@ fn fragment(
 
 
 
-         let viewport_uv = coords_to_viewport_uv(mesh.position.xy, view.viewport);
+         //let viewport_uv = coords_to_viewport_uv(mesh.position.xy, view.viewport);
            
             
-       
-            
-     // let shadow_noise_sample_mesh = textureSample(shadow_noise_texture, shadow_noise_sampler, mesh.world_position.xz * 8 ) ;
-     //  let shadow_noise_sample_viewport = textureSample(shadow_noise_texture, shadow_noise_sampler, viewport_uv * 8 ) ;
-    
-      // let shadow_noise = mix (shadow_noise_sample_mesh, shadow_noise_sample_viewport , 0.5 ) ;   
+        
+        let shadow_color = vec4<f32>(0.2,0.2,0.2,1.0);
 
-
-
-
-    var pbr_out: FragmentOutput;
-
-   // pbr_input.N  = vec3<f32>(0.0,1.0,0.0);
-
-
-    //let computed_pbr_lighting =  compute_pbr_lighting( pbr_input ) ; 
-
-    pbr_out.color =  apply_pbr_lighting(pbr_input);  //add shadows   //re do me ! 
-   
-
-      pbr_out.color *= toon_material.color   ; 
-
-     //pbr_out.color = quantize_color( pbr_out.color , 32u  );
-
-
-    // View direction
-    let camera_pos = view.world_position; 
-    let view_dir = normalize(camera_pos - mesh.world_position.xyz);
-
+        let highlight_color = vec4<f32>(1.0, 1.0, 1.0, 1.0);
 
   
-        //need to rewrite apply_pbr_lighting to make it have toon bands !  basically need this to account for the actual directional light / shadows 
-    let toon_lighting = calculate_toon_lighting( normal_mixed , view_dir, toon_material.sun_dir, toon_material.sun_color );
-
-
-  //  pbr_out.color  *= (toon_lighting + toon_material.ambient_color);  
-
+    let base_color = pbr_input.material.base_color;   //save this for later !! 
+     pbr_input.material.base_color = vec4<f32>(1.0, 1.0, 1.0, 1.0);
     
-    // pbr_out.color = vec4<f32>(viewport_uv.x, viewport_uv.y, 0.0, 1.0) ; 
-
-   //pbr_out.color =   vec4<f32>(frag_coord.xy / 1000.0, 0.0, 1.0);
+      var pbr_out: FragmentOutput; 
+     pbr_out.color =  apply_pbr_lighting(pbr_input);  // apply lighting to the fake white image 
+   
  
-     //  pbr_out.color = main_pass_post_lighting_processing(pbr_input, pbr_out.color); //add fog 
-    //  pbr_out.color =  tone_mapping(pbr_out.color, view.color_grading);  // add tone mapping 
+     let lighting_average  = (pbr_out.color.r + pbr_out.color.g + pbr_out.color.b ) / 3.0 ;
 
 
+       let cel_mask_uv = vec2<f32>(lighting_average, 0.0);
+       let quantization = textureSample(cel_mask, cel_mask_sampler, cel_mask_uv);
+        pbr_out.color = mix(shadow_color, highlight_color, quantization);
 
-    // -----
 
-   // let shadowFactor = calculate_shadow_factor(frag_lightSpacePos);
+        /*
+
+             let eye = normalize(view_bindings::view.world_position.xyz - in.world_position.xyz);
+            let rim = 1.0 - abs(dot(eye, in.world_normal));
+            let rim_factor = rim * rim * rim * rim;
+            out.color = mix(out.color, rim_color, rim_factor);
+        */
+
+     pbr_out.color = pbr_out.color * base_color;   // re-add our true base color from before light calcs  ! 
+       pbr_input.material.base_color = base_color;
+
+
+       pbr_out.color = main_pass_post_lighting_processing(pbr_input, pbr_out.color);
+
 
 
    
@@ -719,7 +691,7 @@ fn fragment(
 
     let within_tool_radius = f32(distance <= tool_radius);
 
-    let final_color = mix(
+    var final_color = mix(
         vec4(pbr_out.color.rgb, 1.0),
         vec4(pbr_out.color.rgb * color_from_tool, 1.0),
         within_tool_radius
@@ -730,6 +702,9 @@ fn fragment(
     if (height_map_value < 8) { // Use your threshold value here
         discard;
     }
+        
+
+      final_color = clamp(final_color, vec4<f32>(0.0), vec4<f32>(1.0));
     
     return final_color;
     

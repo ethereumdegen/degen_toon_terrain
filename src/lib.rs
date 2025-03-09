@@ -18,7 +18,7 @@ use std::time::Duration;
 use crate::terrain_material::TerrainMaterialExtension;
 use crate::terrain_material::{TERRAIN_SHADER_HANDLE,TOON_LIGHTING_SHADER_HANDLE,CUSTOM_PBR_FUNCTIONS_SHADER_HANDLE};
  
-use terrain_material::{update_toon_shader, TerrainMaterial, ToonShaderSun};
+use terrain_material::{  TerrainMaterial };
 
 use edit::{
     apply_command_events, apply_tool_edits, EditTerrainEvent, TerrainBrushEvent,
@@ -100,6 +100,8 @@ impl Plugin for TerrainMeshPlugin {
        
 
 
+         embedded_asset!(app, "src/",  "shaders/cel_mask.png" );
+
         
 
 
@@ -126,11 +128,11 @@ impl Plugin for TerrainMeshPlugin {
             initialize_terrain.run_if(on_timer(task_update_rate)),
         );
 
-        app.add_systems(
+     /*   app.add_systems(
             Update,
             update_toon_shader.run_if( 
               any_with_component::<ToonShaderSun>  .and( resource_exists::<Assets<TerrainMaterialExtension>> ) ) ) // need to load resources THEN the  sun 
-        ;
+        ; */ 
          
 
         app.add_systems(Update, (
