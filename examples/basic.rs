@@ -65,7 +65,7 @@ fn main() {
              } ) 
              ,
             // You need to add this plugin to enable wireframe rendering
-            WireframePlugin,
+            WireframePlugin ::default () ,
         ))
 
 
@@ -119,6 +119,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(AmbientLight {
         color: Color::srgba(1.0, 1.0, 1.0, 1.0),
         brightness: 122.12,
+        ..default () 
     });
 
     // camera
