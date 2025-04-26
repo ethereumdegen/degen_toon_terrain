@@ -14,7 +14,8 @@ use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::tasks::{AsyncComputeTaskPool, Task};
 
-use bevy::utils::HashMap;
+
+use bevy::platform::collections::hash_map::HashMap;
 use futures_lite::future;
 use image::{GrayImage, ImageBuffer, Luma, RgbaImage};
 
@@ -465,7 +466,7 @@ pub fn initialize_chunk_data(
 
     asset_server: Res<AssetServer>,
 
-    mut chunk_query: Query<(Entity, &Chunk, &Parent), Without<ChunkData>>,
+    mut chunk_query: Query<(Entity, &Chunk, &ChildOf), Without<ChunkData>>,
 
     terrain_query: Query<(&TerrainConfig, &TerrainData)>,
 ) {
@@ -565,7 +566,7 @@ pub fn add_chunk_splat_data_raw(
         if chunk_data.splat_texture_is_loaded   {
 
 
-            if let Some(mut cmd) = commands.get_entity(  entity ) {
+            if let Ok(mut cmd) = commands.get_entity(  entity ) {
 
                 let Some(splat_index_texture_handle) = &chunk_data.splat_texture_handle else {continue};
               //  let Some(splat_strength_texture_handle) = &chunk_data.splat_strength_texture_handle else {continue};
@@ -785,7 +786,7 @@ pub fn add_render_chunk_at_lod_component(
         chunk_query: Query<(Entity, &Chunk), With<Chunk>>,
         terrain_viewer: Query<Entity, With<TerrainViewer>>,
 
-        parent_query: Query<&Parent>,
+        parent_query: Query<&ChildOf>,
 
         terrain_query: Query<(&TerrainData, &TerrainConfig)>,
  
@@ -878,7 +879,7 @@ pub fn reset_chunk_height_data(
 
     chunk_height_maps: Res <ChunkHeightMapResource>,
 
-    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &Parent, &Children)>,
+    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &ChildOf, &Children)>,
 ) {
     for (chunk_entity, chunk, mut chunk_data, terrain_entity, children) in chunk_query.iter_mut() {
         if chunk_data.height_map_image_data_load_status == TerrainImageDataLoadStatus::NeedsReload {
@@ -904,7 +905,7 @@ pub fn build_chunk_height_data(
 
     mut chunk_height_maps: ResMut<ChunkHeightMapResource>,
 
-    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &Parent)>,
+    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &ChildOf)>,
 ) {
 
 
@@ -987,7 +988,7 @@ fn handle_trigger_terrain_image_data_needs_reload(
 ){
 
 
-    let chunk_entity = trigger.entity(); 
+    let chunk_entity = trigger.target(); 
 
 
     let Some(mut chunk_data) = chunk_data_query.get_mut(chunk_entity ).ok() else {return };
@@ -1084,7 +1085,7 @@ pub fn build_chunk_meshes(
     mut commands: Commands,
     terrain_query: Query<(&TerrainConfig, &TerrainData)>,
 
-    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &Parent, &Visibility, Option<&RenderChunkAtLod> )>,
+    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &ChildOf, &Visibility, Option<&RenderChunkAtLod> )>,
 
     chunk_height_maps: ResMut<ChunkHeightMapResource>,
 
@@ -1114,7 +1115,7 @@ pub fn build_chunk_meshes(
 
 
         if chunk_data.chunk_state == ChunkState::Init {
-            let terrain_entity_id = terrain_entity.get();
+            let terrain_entity_id = terrain_entity.parent();
             if terrain_query.get(terrain_entity_id).is_ok() == false {
                 continue;
             }
@@ -1301,7 +1302,7 @@ pub fn finish_chunk_build_tasks(
     mut commands: Commands,
     mut chunk_build_tasks: Query<(Entity, &mut MeshBuilderTask), Without<StartedTask>>, //&Chunk, &mut ChunkData, &Parent,
 
-    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &Parent)>, //&Chunk, &mut ChunkData, &Parent,
+    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &ChildOf)>, //&Chunk, &mut ChunkData, &Parent,
 
     chunk_with_children_query: Query<&Children, With<ChunkData>>,
 
@@ -1341,14 +1342,14 @@ pub fn finish_chunk_build_tasks(
             let (chunk_entity, chunk, mut chunk_data, terrain_entity) =
                 chunk_query.get_mut(chunk_entity_id).unwrap();
 
-            let terrain_entity_id = terrain_entity.get();
+            let terrain_entity_id = terrain_entity.parent();
 
             let chunk_uv = built_chunk_mesh_data.chunk_uv;
             let mesh = built_chunk_mesh_data.mesh ;
 
             //despawn any old mesh children on this chunk
             if let Ok(chunk_children) = chunk_with_children_query.get(chunk_entity_id) {
-                for &child in chunk_children.iter() {
+                for child in chunk_children.iter() {
                     if chunk_mesh_query.get( child ).ok().is_some(){
                            // commands.entity(child).despawn_recursive();
                             commands.entity(child).insert( DespawnMarker );
@@ -1479,14 +1480,14 @@ pub fn update_chunk_visibility(
     mut chunk_query: Query<(
         &Chunk,
         &mut ChunkData,
-        &Parent,
+        &ChildOf,
         &GlobalTransform,
         &mut Visibility,
     )>,
 
     terrain_viewer: Query<&GlobalTransform, With<TerrainViewer>>,
 ) {
-    let viewer = terrain_viewer.get_single();
+    let viewer = terrain_viewer.single();
 
     let viewer_location: Vec3 = match viewer {
         Ok(view) => view.translation(),
@@ -1541,7 +1542,7 @@ fn despawn_chunks(
     for ent in chunks_query.iter() {
 
 
-        if let Some(mut cmd) = commands.get_entity( ent ){
+        if let Ok(mut cmd) = commands.get_entity( ent ){
 
             cmd.despawn_recursive();
         }

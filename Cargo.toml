@@ -3,12 +3,12 @@ name = "degen_toon_terrain"
 description = "A simple heightmap terrain plugin for Bevy game engine"
  
 
-version = "0.15.18"
+version = "0.16.1"
 
  
  
  
-edition = "2021"
+edition = "2024"
 authors = [ "ethereumdegen" ]
 license = "MIT"
 readme = "readme.md"
@@ -24,7 +24,7 @@ physics = ["avian3d"]  # Enable physics by including avian3d for saving Collider
 
 [dependencies]
 anyhow = "1.0.75"
-bevy = { version = "0.15.0", features=["tga","png"] }
+bevy = { version = "0.16.0", features=["tga","png"] }
 #bevy_mod_sysfail = "6.0.0"
 futures-lite = "1.13.0"
 image = "0.25.1" 

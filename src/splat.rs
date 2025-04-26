@@ -12,7 +12,8 @@ use crate::chunk::ChunkData;
 use serde::Serialize;
 use serde::Deserialize;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+
+use bevy::platform::collections::hash_map::HashMap;
 
 use bevy::render::render_resource::{ Extent3d, TextureDimension, TextureFormat};
 use bevy::render::render_asset::RenderAssetUsages;
@@ -99,15 +100,21 @@ impl ChunkSplatDataRaw {
            
 
         let width = self.splat_map_texture.width();
+
+       
+
+
+        if let Some(ref mut splat_map_texture_data ) = self.splat_map_texture.data{
          
-        let idx = Self::get_pixel_internal_index(x,y,layer,width); 
+            let idx = Self::get_pixel_internal_index(x,y,layer,width); 
 
 
-        if idx >= self.splat_map_texture.data.len() {
-            return ;
+            if idx >= splat_map_texture_data.len() {
+                return ;
+            }
+
+            splat_map_texture_data[idx] = texture_type_index;       
         }
-
-        self.splat_map_texture.data[idx] = texture_type_index;       
 
     }
 
@@ -119,7 +126,7 @@ impl ChunkSplatDataRaw {
         x:u32,
         y:u32,
         layer:u8  
-        ) -> u8 {  
+        ) -> Option<u8> {  
  
 
         //layer must be 0,1,2 or 3 and that is RGBA respectively 
@@ -129,7 +136,7 @@ impl ChunkSplatDataRaw {
         let idx = Self::get_pixel_internal_index(x,y,layer,width); 
  
 
-         self.splat_map_texture.data[idx]      
+         self.splat_map_texture.data.as_ref().map(|x| x[idx] )      
 
     }
 
@@ -142,19 +149,25 @@ impl ChunkSplatDataRaw {
 
              let width = self.splat_map_texture.width();
 
-           for layer in 0..3 { 
-                 //self.splat_pixels[layer as usize][y as usize][x as usize] = SplatPixelDataRaw::new();
 
 
-  
-         
-                 let idx = Self::get_pixel_internal_index(x,y,layer,width); 
+                if let Some(ref mut splat_map_texture_data ) = self.splat_map_texture.data{
+     
+
+                   for layer in 0..3 { 
+                         //self.splat_pixels[layer as usize][y as usize][x as usize] = SplatPixelDataRaw::new();
 
 
-
-                 self.splat_map_texture.data[idx] = 0;
+          
                  
-             }
+                         let idx = Self::get_pixel_internal_index(x,y,layer,width); 
+
+
+
+                         splat_map_texture_data[idx] = 0;
+                         
+                     }
+                 }
 
 
           
@@ -185,7 +198,7 @@ impl ChunkSplatDataRaw {
 fn rebuild_chunk_splat_textures(
     mut commands:Commands,
 
-     mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData,& ChunkSplatDataRaw, &Parent ), 
+     mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData,& ChunkSplatDataRaw, &ChildOf ), 
        With<SplatMapDataUpdated >    >, 
 
      terrain_query: Query<(&TerrainData, &TerrainConfig)>,
@@ -201,7 +214,7 @@ fn rebuild_chunk_splat_textures(
     for (chunk_entity, chunk, mut chunk_data, chunk_splat_data, parent_terrain_entity ) in chunk_query.iter_mut() { 
 
 
-         if let Some(mut cmds) = commands.get_entity( chunk_entity ){
+         if let Ok(mut cmds) = commands.get_entity( chunk_entity ){
 
 
                 cmds.remove::<SplatMapDataUpdated>();
@@ -211,7 +224,7 @@ fn rebuild_chunk_splat_textures(
            }
 
 
-          let terrain_entity_id = parent_terrain_entity.get();
+          let terrain_entity_id = parent_terrain_entity.parent();
 
             if terrain_query.get(terrain_entity_id).is_ok() == false {
                 continue;
@@ -265,7 +278,7 @@ where
     //   || format == TextureFormat::Rgba16Unorm
     {
         // The data in Bevy's Image type is stored in a Vec<u8>, so we can use it directly
-        let img: RgbaImage = ImageBuffer::from_raw(width, height, image_data.clone())
+        let img: RgbaImage = ImageBuffer::from_raw(width, height, image_data.clone().unwrap() .into( )  )
             .expect("Failed to create image buffer");
 
         // Save the image to the specified file path

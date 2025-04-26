@@ -3,7 +3,8 @@ use crate::chunk::CardinalDirection;
 use crate::splat::SplatMapDataUpdated;
 use crate::splat::save_chunk_splat_map_to_disk; 
 
-use bevy::utils::HashMap ;
+
+use bevy::platform::collections::hash_map::HashMap;
  
 use crate::heightmap::HeightMap;
 use crate::splat::ChunkSplatDataRaw;
@@ -115,7 +116,7 @@ pub enum TerrainCommandEvent {
 pub fn apply_command_events(
     asset_server: Res<AssetServer>,
 
-      chunk_query: Query<(&Chunk, & ChunkData, &ChunkSplatDataRaw, &Parent, &Children)>, //chunks parent should have terrain data
+      chunk_query: Query<(&Chunk, & ChunkData, &ChunkSplatDataRaw, &ChildOf, &Children)>, //chunks parent should have terrain data
 
     mut images: ResMut<Assets<Image>>,
     mut terrain_materials: ResMut<Assets<TerrainMaterialExtension>>,
@@ -317,8 +318,8 @@ pub fn apply_tool_edits(
     mut commands: Commands, 
     mut asset_server: Res<AssetServer>,
 
-    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &Parent, &GlobalTransform, Option<&mut ChunkSplatDataRaw>)>, //chunks parent should have terrain data
-    chunk_mesh_query: Query<(&Parent, &GlobalTransform)>,
+    mut chunk_query: Query<(Entity, &Chunk, &mut ChunkData, &ChildOf, &GlobalTransform, Option<&mut ChunkSplatDataRaw>)>, //chunks parent should have terrain data
+    chunk_mesh_query: Query<(&ChildOf, &GlobalTransform)>,
 
     mut images: ResMut<Assets<Image>>,
     mut terrain_materials: ResMut<Assets<TerrainMaterialExtension>>,
@@ -589,7 +590,7 @@ pub fn apply_tool_edits(
                                                         );
 
                                                     // Generate a random value between -0.5 and 0.5, then scale it by the desired height variation
-                                                    let noise = rng.gen::<f32>() - 0.5;
+                                                    let noise = rng.r#gen::<f32>() - 0.5;
                                                     let noise_scaled = noise * *height as f32; // Adjust *height to control the scale of the noise
                                                     let new_height = noise_scaled as u16;
 
@@ -624,7 +625,7 @@ pub fn apply_tool_edits(
 
                                             if x < img_data_length && y < img_data_length {
                                                 let local_height = height_map_data[y][x];
-                                                evt_writer.send(
+                                                evt_writer.write(
                                                     TerrainBrushEvent::EyeDropTerrainHeight {
                                                         height: local_height,
                                                     },
@@ -683,7 +684,7 @@ pub fn apply_tool_edits(
 
 
 
-                                            if let Some(mut cmds) = commands.get_entity( chunk_entity ){
+                                            if let Ok(mut cmds) = commands.get_entity( chunk_entity ){
 
 
                                                 cmds.try_insert(SplatMapDataUpdated);
@@ -771,7 +772,7 @@ pub fn apply_tool_edits(
                                                                 );
 
 
-                                                                let original_value = chunk_splat_data_raw.get_pixel_index_map_data(x, y, layer_index);
+                                                                let original_value = chunk_splat_data_raw.get_pixel_index_map_data(x, y, layer_index) .unwrap_or( 0 );
 
                                                                 let hardened_value =   apply_hardness_multiplier(
                                                                     original_value as f32,
@@ -922,7 +923,7 @@ pub fn apply_tool_edits(
                                                                 y,
                                                                 tex_layer,
                                                            
-                                                            ); 
+                                                            ).unwrap_or(0); 
 
                                                       
 
@@ -933,7 +934,7 @@ pub fn apply_tool_edits(
 
                                                    
 
-                                                        evt_writer.send(
+                                                        evt_writer.write(
                                                             TerrainBrushEvent::EyeDropSplatMap {
                                                                  texture_indices
                                                             },
@@ -990,7 +991,7 @@ pub fn apply_tool_edits(
 
 
 
-                                            if let Some(mut cmds) = commands.get_entity( chunk_entity ){
+                                            if let Ok(mut cmds) = commands.get_entity( chunk_entity ){
 
 
                                                 cmds.try_insert(SplatMapDataUpdated);
@@ -1204,7 +1205,7 @@ pub fn apply_tool_edits(
                                                                 y,
                                                                 tex_layer,
                                                            
-                                                            ); 
+                                                            ).unwrap_or(0); 
 
                                                       
 
@@ -1215,7 +1216,7 @@ pub fn apply_tool_edits(
 
                                                    
 
-                                                        evt_writer.send(
+                                                        evt_writer.write(
                                                             TerrainBrushEvent::EyeDropSplatMap {
                                                                  texture_indices, 
                                                             },
