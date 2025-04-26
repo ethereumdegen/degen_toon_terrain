@@ -47,7 +47,22 @@ impl HeightMap for HeightMapU16 {
 
 
         let mut height_map = Vec::with_capacity(height);
-        let mut data_iter = image.data.chunks_exact(2);
+
+
+        let image_data = match &image.data {
+
+            Some( d ) => d ,
+
+            None  => return Err( HeightMapError::LoadingError )
+
+        };
+
+        let mut data_iter = image_data.chunks_exact(2);
+
+
+
+
+
 
         for _ in 0..height {
             let mut row = Vec::with_capacity(width);
