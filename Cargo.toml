@@ -3,7 +3,7 @@ name = "degen_toon_terrain"
 description = "A simple heightmap terrain plugin for Bevy game engine"
  
 
-version = "0.16.3"
+version = "0.16.4"
 
  
  
