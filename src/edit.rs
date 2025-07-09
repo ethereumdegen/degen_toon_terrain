@@ -371,7 +371,17 @@ pub fn apply_tool_edits(
 
                 let chunk_local_distance = tool_coords.distance(chunk_center_transform);
 
-                if chunk_local_distance < 400.0 {
+                // Use actual brush radius with a small buffer for edge cases
+                let brush_radius_with_buffer = ev.radius + 350.0;
+                
+                // For eyedropper, also check if the click point is within the chunk bounds
+                let is_within_chunk_bounds = ev.brush_type == BrushType::EyeDropper && 
+                    tool_coords.x >= chunk_transform_vec2.x &&
+                    tool_coords.x < chunk_transform_vec2.x + chunk_dimensions_vec.x &&
+                    tool_coords.y >= chunk_transform_vec2.y &&
+                    tool_coords.y < chunk_transform_vec2.y + chunk_dimensions_vec.y;
+                
+                if chunk_local_distance < brush_radius_with_buffer || is_within_chunk_bounds {
                     chunk_entities_within_range.push(chunk_entity);
                 }
             }
@@ -739,9 +749,15 @@ pub fn apply_tool_edits(
 
                                                         //  img.data[idx] = *r as u8;
 
-                                                        // Check if the pixel is within the tool's radius
-                                                        if tool_coords.distance(pixel_pos )
-                                                            < pixel_radius
+                                                        // Check if the pixel is within the tool's radius AND within reasonable bounds
+                                                        if tool_coords.distance(pixel_pos ) < pixel_radius
+                                                            && is_pixel_within_reasonable_bounds(
+                                                                pixel_pos,
+                                                                *tool_coords,
+                                                                chunk_transform_vec2,
+                                                                chunk_dimensions_vec,
+                                                                pixel_radius,
+                                                            )
                                                         {
 
                                                       
@@ -858,9 +874,15 @@ pub fn apply_tool_edits(
 
                                                         //  img.data[idx] = *r as u8;
 
-                                                        // Check if the pixel is within the tool's radius
-                                                        if tool_coords .distance(pixel_pos )
-                                                            < pixel_radius
+                                                        // Check if the pixel is within the tool's radius AND within reasonable bounds
+                                                        if tool_coords.distance(pixel_pos ) < pixel_radius
+                                                            && is_pixel_within_reasonable_bounds(
+                                                                pixel_pos,
+                                                                *tool_coords,
+                                                                chunk_transform_vec2,
+                                                                chunk_dimensions_vec,
+                                                                pixel_radius,
+                                                            )
                                                         {
 
                                                            // let texture_type_index = *r as u8;
@@ -1039,8 +1061,14 @@ pub fn apply_tool_edits(
 
 
  
-                                                        if tool_coords.distance(pixel_pos )
-                                                            >= pixel_radius
+                                                        if tool_coords.distance(pixel_pos ) >= pixel_radius
+                                                            || !is_pixel_within_reasonable_bounds(
+                                                                pixel_pos,
+                                                                *tool_coords,
+                                                                chunk_transform_vec2,
+                                                                chunk_dimensions_vec,
+                                                                pixel_radius,
+                                                            )
                                                         { continue };
 
 
@@ -1140,9 +1168,15 @@ pub fn apply_tool_edits(
 
                                                         //  img.data[idx] = *r as u8;
 
-                                                        // Check if the pixel is within the tool's radius
-                                                        if tool_coords .distance(pixel_pos )
-                                                            < pixel_radius
+                                                        // Check if the pixel is within the tool's radius AND within reasonable bounds
+                                                        if tool_coords.distance(pixel_pos ) < pixel_radius
+                                                            && is_pixel_within_reasonable_bounds(
+                                                                pixel_pos,
+                                                                *tool_coords,
+                                                                chunk_transform_vec2,
+                                                                chunk_dimensions_vec,
+                                                                pixel_radius,
+                                                            )
                                                         {
 
                                                            // let texture_type_index = *r as u8;
@@ -1241,6 +1275,33 @@ pub fn apply_tool_edits(
             }
         }
     }
+}
+
+fn is_pixel_within_reasonable_bounds(
+    pixel_world_pos: Vec2,
+    tool_coords: Vec2,
+    chunk_world_pos: Vec2,
+    chunk_dimensions: Vec2,
+    brush_radius: f32,
+) -> bool {
+    // Primary check: is the pixel within a reasonable distance from the tool?
+    // This is the most important check to prevent the original "mirror" issue
+    let distance_from_tool = pixel_world_pos.distance(tool_coords);
+    
+    // Allow pixels within 3x brush radius of the tool (generous to avoid deadzones)
+    let max_distance = brush_radius * 1.0;
+    let distance_check = distance_from_tool <= max_distance;
+    
+    // Secondary check: prevent extreme coordinate transformation errors
+    // Only reject if the pixel is WAY outside the chunk bounds (2x chunk size buffer)
+    let buffer = chunk_dimensions * 1.0; // Very generous buffer
+    let bounds_check = pixel_world_pos.x >= chunk_world_pos.x - buffer.x
+        && pixel_world_pos.x < chunk_world_pos.x + chunk_dimensions.x + buffer.x
+        && pixel_world_pos.y >= chunk_world_pos.y - buffer.y
+        && pixel_world_pos.y < chunk_world_pos.y + chunk_dimensions.y + buffer.y;
+    
+    // Both checks must pass, but the bounds check is very lenient
+    distance_check && bounds_check
 }
 
 fn get_hardness_multiplier(pixel_distance: f32, brush_radius: f32, brush_hardness: f32) -> f32 {
