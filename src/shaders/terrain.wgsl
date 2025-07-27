@@ -655,11 +655,16 @@ fn fragment(
       var pbr_out: FragmentOutput; 
      pbr_out.color =  apply_pbr_lighting(pbr_input);  // apply lighting to the fake white image 
    
- 
+         // This prevents bright lights from causing values > 1.0
+     pbr_out.color = clamp(pbr_out.color, vec4<f32>(0.0), vec4<f32>(0.9));
+
+
      let lighting_average  = (pbr_out.color.r + pbr_out.color.g + pbr_out.color.b ) / 3.0 ;
 
+      let saturated_lighting_average = saturate(lighting_average);
 
-       let cel_mask_uv = vec2<f32>(lighting_average, 0.0);
+
+       let cel_mask_uv = vec2<f32>(saturated_lighting_average, 0.0);
        let quantization = textureSample(cel_mask, cel_mask_sampler, cel_mask_uv);
         pbr_out.color = mix(shadow_color, highlight_color, quantization);
 
